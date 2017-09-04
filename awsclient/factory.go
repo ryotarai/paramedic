@@ -20,10 +20,14 @@ func NewFactory() (*Factory, error) {
 	}, nil
 }
 
-func (f *Factory) SSM() *ssm.SSM {
-	return ssm.New(f.sess)
+func (f *Factory) Region() string {
+	return *f.sess.Config.Region
 }
 
-func (f *Factory) S3() *s3.S3 {
-	return s3.New(f.sess)
+func (f *Factory) SSM() SSM {
+	return SSM(ssm.New(f.sess))
+}
+
+func (f *Factory) S3() S3 {
+	return S3(s3.New(f.sess))
 }

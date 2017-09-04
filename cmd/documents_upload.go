@@ -22,9 +22,11 @@ import (
 
 // uploadCmd represents the upload command
 var uploadCmd = &cobra.Command{
-	Use:   "upload",
-	Short: "Upload a document",
-	Args:  cobra.ExactArgs(1),
+	Use:           "upload",
+	Short:         "Upload a document",
+	Args:          cobra.ExactArgs(1),
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		scriptS3Bucket, err := cmd.Flags().GetString("script-s3-bucket")
 		if err != nil {
@@ -35,6 +37,10 @@ var uploadCmd = &cobra.Command{
 			return err
 		}
 		documentNamePrefix, err := cmd.Flags().GetString("document-name-prefix")
+		if err != nil {
+			return err
+		}
+		agentPath, err := cmd.Flags().GetString("paramedic-agent")
 		if err != nil {
 			return err
 		}
@@ -55,6 +61,8 @@ var uploadCmd = &cobra.Command{
 			ScriptS3Bucket:     scriptS3Bucket,
 			ScriptS3KeyPrefix:  scriptS3KeyPrefix,
 			DocumentNamePrefix: documentNamePrefix,
+			AgentPath:          agentPath,
+			Region:             awsFactory.Region(),
 		}
 		err = generator.Create(def)
 		if err != nil {
@@ -84,4 +92,5 @@ func init() {
 	uploadCmd.Flags().String("script-s3-bucket", "", "S3 bucket to store a script file")
 	uploadCmd.Flags().String("script-s3-key-prefix", "", "S3 key prefix to store a script file")
 	uploadCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
+	uploadCmd.Flags().String("paramedic-agent", "paramedic-agent", "Path to paramedic-agent binary")
 }

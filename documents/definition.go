@@ -22,12 +22,11 @@ import (
 // )
 
 type Definition struct {
-	Name             string `yaml:"name"`
-	Description      string `yaml:"description"`
-	Script           string `yaml:"script"`
-	ScriptFile       string `yaml:"scriptFile"`
-	Timeout          string `yaml:"timeout"`
-	WorkingDirectory string `yaml:"workingDirectory"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Script      string `yaml:"script"`
+	ScriptFile  string `yaml:"scriptFile"`
+	Timeout     string `yaml:"timeout"`
 }
 
 func LoadDefinition(file string) (*Definition, error) {
@@ -66,7 +65,7 @@ func LoadDefinition(file string) (*Definition, error) {
 	return d, nil
 }
 
-func (d *Definition) ScriptSum256() string {
+func (d *Definition) ScriptSha256() string {
 	sum := sha256.Sum256([]byte(d.Script))
 	return fmt.Sprintf("%x", sum)
 }

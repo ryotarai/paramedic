@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
+
 	"github.com/aws/aws-sdk-go/service/ssm"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,6 +22,8 @@ type Generator struct {
 	ScriptS3Bucket     string
 	ScriptS3KeyPrefix  string
 	DocumentNamePrefix string
+	AgentPath          string
+	Region             string
 }
 
 func (g *Generator) Create(d *Definition) error {
@@ -43,23 +47,52 @@ func (g *Generator) Create(d *Definition) error {
 
 func (g *Generator) createDocument(d *Definition, content string) error {
 	name := fmt.Sprintf("%s%s", g.DocumentNamePrefix, d.Name)
-	log.Printf("INFO: creating a document '%s'", name)
 
-	input := &ssm.CreateDocumentInput{
-		Content:      aws.String(content),
-		DocumentType: aws.String("Command"),
-		Name:         aws.String(name),
+	_, err := g.SSM.DescribeDocument(&ssm.DescribeDocumentInput{
+		Name: aws.String(name),
+	})
+	if err == nil {
+		log.Printf("INFO: updating a document '%s'", name)
+		resp, err := g.SSM.UpdateDocument(&ssm.UpdateDocumentInput{
+			Name:            aws.String(name),
+			Content:         aws.String(content),
+			DocumentVersion: aws.String("$LATEST"),
+		})
+		if err != nil {
+			return err
+		}
+
+		_, err = g.SSM.UpdateDocumentDefaultVersion(&ssm.UpdateDocumentDefaultVersionInput{
+			Name:            aws.String(name),
+			DocumentVersion: resp.DocumentDescription.DocumentVersion,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		aErr, ok := err.(awserr.Error)
+		if !ok || aErr.Code() != ssm.ErrCodeInvalidDocument {
+			return err
+		}
+		// document does not exist
+		log.Printf("INFO: creating a document '%s'", name)
+
+		_, err := g.SSM.CreateDocument(&ssm.CreateDocumentInput{
+			Content:      aws.String(content),
+			DocumentType: aws.String("Command"),
+			Name:         aws.String(name),
+		})
+		if err != nil {
+			return err
+		}
 	}
-	_, err := g.SSM.CreateDocument(input)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
 func (g *Generator) uploadScript(d *Definition) (string, error) {
-	key := fmt.Sprintf("%s%s-%s", g.ScriptS3KeyPrefix, d.Name, d.ScriptSum256())
-	log.Printf("INFO: uploading a script to %s/%s", g.ScriptS3Bucket, key)
+	key := fmt.Sprintf("%s%s-%s", g.ScriptS3KeyPrefix, d.Name, d.ScriptSha256())
+	log.Printf("INFO: uploading a script to s3://%s/%s", g.ScriptS3Bucket, key)
 	input := &s3.PutObjectInput{
 		Body:   strings.NewReader(d.Script),
 		Bucket: aws.String(g.ScriptS3Bucket),
@@ -114,7 +147,8 @@ func (g *Generator) json(d *Definition, scriptKey string) (string, error) {
 						"export PARAMEDIC_SIGNAL_S3_KEY={{signalS3Key}}",
 						fmt.Sprintf("export PARAMEDIC_SCRIPT_S3_BUCKET=%s", g.ScriptS3Bucket),
 						fmt.Sprintf("export PARAMEDIC_SCRIPT_S3_KEY=%s", scriptKey),
-						"exec paramedic-agent",
+						fmt.Sprintf("export AWS_REGION=%s", g.Region),
+						fmt.Sprintf("exec %s", g.AgentPath),
 					},
 					"timeoutSeconds": "{{ executionTimeout }}",
 				},

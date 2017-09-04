@@ -6,6 +6,10 @@ import (
 
 type SSM interface {
 	CreateDocument(*ssm.CreateDocumentInput) (*ssm.CreateDocumentOutput, error)
+	DescribeDocument(*ssm.DescribeDocumentInput) (*ssm.DescribeDocumentOutput, error)
+	UpdateDocument(*ssm.UpdateDocumentInput) (*ssm.UpdateDocumentOutput, error)
+	UpdateDocumentDefaultVersion(*ssm.UpdateDocumentDefaultVersionInput) (*ssm.UpdateDocumentDefaultVersionOutput, error)
+	SendCommand(*ssm.SendCommandInput) (*ssm.SendCommandOutput, error)
 }
 
 type SSMDocument struct {
