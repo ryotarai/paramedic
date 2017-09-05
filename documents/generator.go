@@ -106,6 +106,8 @@ func (g *Generator) uploadScript(d *Definition) (string, error) {
 }
 
 func (g *Generator) json(d *Definition, scriptKey string) (string, error) {
+	allowedPattern := "[¥¥w-/¥¥.]+"
+
 	j := map[string]interface{}{
 		"schemaVersion": "2.2",
 		"description":   d.Description,
@@ -119,20 +121,22 @@ func (g *Generator) json(d *Definition, scriptKey string) (string, error) {
 			"outputLogGroup": map[string]string{
 				"type":           "String",
 				"description":    "(Required) Log group name",
-				"allowedPattern": "[\\.\\-_/#A-Za-z0-9]+",
+				"allowedPattern": allowedPattern,
 			},
 			"outputLogStreamPrefix": map[string]string{
 				"type":           "String",
 				"description":    "(Required) Log stream name prefix",
-				"allowedPattern": "[^:*]*",
+				"allowedPattern": allowedPattern,
 			},
 			"signalS3Bucket": map[string]string{
-				"type":        "String",
-				"description": "(Required) S3 bucket the signal object is stored in",
+				"type":           "String",
+				"description":    "(Required) S3 bucket the signal object is stored in",
+				"allowedPattern": allowedPattern,
 			},
 			"signalS3Key": map[string]string{
-				"type":        "String",
-				"description": "(Required) S3 object key the signal object is stored at",
+				"type":           "String",
+				"description":    "(Required) S3 object key the signal object is stored at",
+				"allowedPattern": allowedPattern,
 			},
 		},
 		"mainSteps": []interface{}{

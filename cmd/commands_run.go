@@ -87,7 +87,7 @@ var commandsRunCmd = &cobra.Command{
 			MaxErrors:      aws.String(maxErrors),
 			Parameters: map[string][]*string{
 				"outputLogGroup":        []*string{aws.String(outputLogGroup)},
-				"outputLogStreamPrefix": []*string{aws.String(fmt.Sprintf("%s-", pcommandID))},
+				"outputLogStreamPrefix": []*string{aws.String(fmt.Sprintf("%s/", pcommandID))},
 				"signalS3Bucket":        []*string{aws.String(signalS3Bucket)},
 				"signalS3Key":           []*string{aws.String(fmt.Sprintf("%s%s.json", signalS3KeyPrefix, pcommandID))},
 			},
@@ -99,7 +99,7 @@ var commandsRunCmd = &cobra.Command{
 		log.Printf("INFO: started a command %s", commandID)
 
 		st := store.New(awsFactory.DynamoDB())
-		err = st.PutID(&store.IDRecord{
+		err = st.PutCommand(&store.CommandRecord{
 			CommandID:  commandID,
 			PcommandID: pcommandID,
 		})

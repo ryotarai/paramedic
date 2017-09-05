@@ -15,6 +15,11 @@
 package cmd
 
 import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
@@ -33,6 +38,20 @@ to quickly create a Cobra application.`,
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("This command will do the following things")
+		fmt.Println("- Creating 'ParamedicCommands' DynamoDB table")
+		fmt.Print("Are you sure to continue? (y/N): ")
+
+		r := bufio.NewReader(os.Stdin)
+		line, err := r.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		if !strings.HasPrefix(line, "y") {
+			fmt.Println("Canceled.")
+			return nil
+		}
+
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
 			return err

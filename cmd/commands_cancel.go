@@ -15,12 +15,15 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/ssm"
 
 	"github.com/ryotarai/paramedic/awsclient"
@@ -36,12 +39,15 @@ var commandsCancelCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, k := range []string{"command-id"} {
+		for _, k := range []string{"command-id", "signal-s3-bucket"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
 			}
 		}
 		commandID := viper.GetString("command-id")
+		signalS3Bucket := viper.GetString("signal-s3-bucket")
+		signalS3KeyPrefix := viper.GetString("signal-s3-key-prefix")
+		signalNo := viper.GetInt("signal")
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
@@ -66,16 +72,33 @@ var commandsCancelCmd = &cobra.Command{
 
 		// Get pcommand ID
 		st := store.New(awsFactory.DynamoDB())
-		r, err := st.GetID(commandID)
+		r, err := st.GetCommand(commandID)
+		if err != nil {
+			return err
+		}
+		pcommandID := r.PcommandID
+		log.Printf("DEBUG: PcommandID is %+v", r)
+
+		// Put signal
+		payload := map[string]int{
+			"signal": signalNo,
+		}
+		j, err := json.Marshal(payload)
 		if err != nil {
 			return err
 		}
 
-		log.Printf("DEBUG: PcommandID is %s", r.PcommandID)
-
-		// Put signal
-
-		// Wait for command
+		s3Client := awsFactory.S3()
+		key := fmt.Sprintf("%s%s.json", signalS3KeyPrefix, pcommandID)
+		log.Printf("INFO: putting a signal object to s3://%s/%s", signalS3Bucket, key)
+		_, err = s3Client.PutObject(&s3.PutObjectInput{
+			Body:   bytes.NewReader(j),
+			Bucket: aws.String(signalS3Bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
@@ -93,6 +116,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	commandsCancelCmd.Flags().String("command-id", "", "Command ID to be canceled")
+	commandsCancelCmd.Flags().String("signal-s3-bucket", "", "S3 bucket to store a signal object")
+	commandsCancelCmd.Flags().String("signal-s3-key-prefix", "signals/", "S3 key prefix to store a signal object")
+	commandsCancelCmd.Flags().Int("signal", 15, "Signal number to be sent to the processes")
 
 	viper.BindPFlags(commandsCancelCmd.Flags())
 }

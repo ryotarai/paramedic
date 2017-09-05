@@ -1,6 +1,6 @@
 package store
 
-type IDRecord struct {
+type CommandRecord struct {
 	CommandID  string
 	PcommandID string
 }

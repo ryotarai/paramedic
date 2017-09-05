@@ -9,7 +9,7 @@ import (
 	"github.com/ryotarai/paramedic/awsclient"
 )
 
-const idsTableName = "paramedic-ids"
+const commandsTableName = "ParamedicCommands"
 
 type Store struct {
 	dynamodb awsclient.DynamoDB
@@ -21,14 +21,14 @@ func New(dynamodb awsclient.DynamoDB) *Store {
 	}
 }
 
-func (s *Store) PutID(r *IDRecord) error {
+func (s *Store) PutCommand(r *CommandRecord) error {
 	av, err := dynamodbattribute.MarshalMap(*r)
 	if err != nil {
 		return err
 	}
 
 	_, err = s.dynamodb.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String(idsTableName),
+		TableName: aws.String(commandsTableName),
 		Item:      av,
 	})
 	if err != nil {
@@ -38,9 +38,9 @@ func (s *Store) PutID(r *IDRecord) error {
 	return nil
 }
 
-func (s *Store) GetID(commandID string) (*IDRecord, error) {
+func (s *Store) GetCommand(commandID string) (*CommandRecord, error) {
 	resp, err := s.dynamodb.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(idsTableName),
+		TableName: aws.String(commandsTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"CommandID": {S: aws.String(commandID)},
 		},
@@ -49,7 +49,7 @@ func (s *Store) GetID(commandID string) (*IDRecord, error) {
 		return nil, err
 	}
 
-	r := IDRecord{}
+	r := CommandRecord{}
 	err = dynamodbattribute.UnmarshalMap(resp.Item, &r)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (s *Store) CreateTablesIfNotExists() error {
 	found := false
 	err := s.dynamodb.ListTablesPages(&dynamodb.ListTablesInput{}, func(resp *dynamodb.ListTablesOutput, last bool) bool {
 		for _, n := range resp.TableNames {
-			if *n == idsTableName {
+			if *n == commandsTableName {
 				found = true
 				return false
 			}
@@ -81,9 +81,9 @@ func (s *Store) CreateTablesIfNotExists() error {
 }
 
 func (s *Store) createTables() error {
-	log.Printf("INFO: creating %s table", idsTableName)
+	log.Printf("INFO: creating %s table", commandsTableName)
 	_, err := s.dynamodb.CreateTable(&dynamodb.CreateTableInput{
-		TableName: aws.String(idsTableName),
+		TableName: aws.String(commandsTableName),
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
 				AttributeName: aws.String("CommandID"),
