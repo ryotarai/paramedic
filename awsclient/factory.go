@@ -2,6 +2,7 @@ package awsclient
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
@@ -30,4 +31,8 @@ func (f *Factory) SSM() SSM {
 
 func (f *Factory) S3() S3 {
 	return S3(s3.New(f.sess))
+}
+
+func (f *Factory) DynamoDB() DynamoDB {
+	return DynamoDB(dynamodb.New(f.sess))
 }

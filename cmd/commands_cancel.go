@@ -15,60 +15,74 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
+	"log"
+
+	"github.com/aws/aws-sdk-go/aws"
+
+	"github.com/aws/aws-sdk-go/service/ssm"
+
 	"github.com/ryotarai/paramedic/awsclient"
-	"github.com/ryotarai/paramedic/documents"
+	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 // uploadCmd represents the upload command
-var uploadCmd = &cobra.Command{
-	Use:           "upload",
-	Short:         "Upload a document",
-	Args:          cobra.ExactArgs(1),
+var commandsCancelCmd = &cobra.Command{
+	Use:           "cancel",
+	Short:         "Cancel a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		scriptS3Bucket := viper.GetString("script-s3-bucket")
-		scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
-		documentNamePrefix := viper.GetString("document-name-prefix")
-		agentPath := viper.GetString("agent-path")
+		for _, k := range []string{"command-id"} {
+			if viper.GetString(k) == "" {
+				return fmt.Errorf("%s is required", k)
+			}
+		}
+		commandID := viper.GetString("command-id")
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		def, err := documents.LoadDefinition(args[0])
+		ssmClient := awsFactory.SSM()
+		resp, err := ssmClient.ListCommands(&ssm.ListCommandsInput{
+			CommandId: aws.String(commandID),
+		})
 		if err != nil {
 			return err
 		}
 
-		generator := documents.Generator{
-			S3:                 awsFactory.S3(),
-			SSM:                awsFactory.SSM(),
-			ScriptS3Bucket:     scriptS3Bucket,
-			ScriptS3KeyPrefix:  scriptS3KeyPrefix,
-			DocumentNamePrefix: documentNamePrefix,
-			AgentPath:          agentPath,
-			Region:             awsFactory.Region(),
+		if len(resp.Commands) == 0 {
+			return errors.New("command is not found")
 		}
-		err = generator.Create(def)
+		status := *resp.Commands[0].Status
+		if status != "Pending" && status != "InProgress" {
+			return fmt.Errorf("can't cancel the command because its status is %s", status)
+		}
+
+		// Get pcommand ID
+		st := store.New(awsFactory.DynamoDB())
+		r, err := st.GetID(commandID)
 		if err != nil {
 			return err
 		}
 
-		// awsFactory := awsclient.NewFactory()
-		// ssm := awsFactory.SSM()
+		log.Printf("DEBUG: PcommandID is %s", r.PcommandID)
 
-		// uploader := documents.NewUploader()
+		// Put signal
+
+		// Wait for command
 
 		return nil
 	},
 }
 
 func init() {
-	documentsCmd.AddCommand(uploadCmd)
+	commandsCmd.AddCommand(commandsCancelCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -78,10 +92,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	uploadCmd.Flags().String("script-s3-bucket", "", "S3 bucket to store a script file")
-	uploadCmd.Flags().String("script-s3-key-prefix", "", "S3 key prefix to store a script file")
-	uploadCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
-	uploadCmd.Flags().String("agent-path", "paramedic-agent", "Path to paramedic-agent binary")
+	commandsCancelCmd.Flags().String("command-id", "", "Command ID to be canceled")
 
-	viper.BindPFlags(uploadCmd.Flags())
+	viper.BindPFlags(commandsCancelCmd.Flags())
 }

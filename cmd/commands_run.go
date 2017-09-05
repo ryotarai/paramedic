@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/google/uuid"
 	"github.com/ryotarai/paramedic/awsclient"
+	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -94,7 +95,17 @@ var commandsRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		log.Printf("INFO: started a command %s", *resp.Command.CommandId)
+		commandID := *resp.Command.CommandId
+		log.Printf("INFO: started a command %s", commandID)
+
+		st := store.New(awsFactory.DynamoDB())
+		err = st.PutID(&store.IDRecord{
+			CommandID:  commandID,
+			PcommandID: pcommandID,
+		})
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
