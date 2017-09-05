@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -25,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // uploadCmd represents the upload command
@@ -34,52 +34,21 @@ var commandsRunCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return errors.New("Hi")
-		documentNamePrefix, err := cmd.Flags().GetString("document-name-prefix")
-		if err != nil {
-			return err
+		for _, k := range []string{"document-name", "output-log-group", "signal-s3-bucket"} {
+			if viper.GetString(k) == "" {
+				return fmt.Errorf("%s is required", k)
+			}
 		}
-		documentName, err := cmd.Flags().GetString("document-name")
-		if err != nil {
-			return err
-		}
-		if documentName == "" {
-			return errors.New("document-name is required")
-		}
-		maxConcurrency, err := cmd.Flags().GetString("max-concurrency")
-		if err != nil {
-			return err
-		}
-		maxErrors, err := cmd.Flags().GetString("max-errors")
-		if err != nil {
-			return err
-		}
-		instanceIDs, err := cmd.Flags().GetStringSlice("instance-id")
-		if err != nil {
-			return err
-		}
-		tags, err := cmd.Flags().GetStringSlice("tag")
-		if err != nil {
-			return err
-		}
-		outputLogGroup, err := cmd.Flags().GetString("output-log-group")
-		if err != nil {
-			return err
-		}
-		if outputLogGroup == "" {
-			return errors.New("output-log-group is required")
-		}
-		signalS3Bucket, err := cmd.Flags().GetString("signal-s3-bucket")
-		if err != nil {
-			return err
-		}
-		if signalS3Bucket == "" {
-			return errors.New("signal-s3-bucket is required")
-		}
-		signalS3KeyPrefix, err := cmd.Flags().GetString("signal-s3-key-prefix")
-		if err != nil {
-			return err
-		}
+
+		documentNamePrefix := viper.GetString("document-name-prefix")
+		documentName := viper.GetString("document-name")
+		maxConcurrency := viper.GetString("max-concurrency")
+		maxErrors := viper.GetString("max-errors")
+		instanceIDs := viper.GetStringSlice("instance-ids")
+		tags := viper.GetStringSlice("tags")
+		outputLogGroup := viper.GetString("output-log-group")
+		signalS3Bucket := viper.GetString("signal-s3-bucket")
+		signalS3KeyPrefix := viper.GetString("signal-s3-key-prefix")
 
 		documentName = fmt.Sprintf("%s%s", documentNamePrefix, documentName)
 
@@ -149,6 +118,8 @@ func init() {
 	commandsRunCmd.Flags().String("signal-s3-key-prefix", "signals/", "S3 key prefix to store a signal object")
 	commandsRunCmd.Flags().String("max-concurrency", "50", "The maximum number of instances that are allowed to execute the command at the same time")
 	commandsRunCmd.Flags().String("max-errors", "50", "The maximum number of errors allowed without the command failing")
-	commandsRunCmd.Flags().StringSlice("instance-id", []string{}, "Instance ID")
-	commandsRunCmd.Flags().StringSlice("tag", []string{}, "Instance tag")
+	commandsRunCmd.Flags().StringSlice("instance-ids", []string{}, "Instance IDs")
+	commandsRunCmd.Flags().StringSlice("tags", []string{}, "Instance tags")
+
+	viper.BindPFlags(commandsRunCmd.Flags())
 }
