@@ -15,18 +15,10 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
-
-	"github.com/aws/aws-sdk-go/aws"
-
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/ssm"
 
 	"github.com/ryotarai/paramedic/awsclient"
+	"github.com/ryotarai/paramedic/commands"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -54,47 +46,15 @@ var commandsCancelCmd = &cobra.Command{
 			return err
 		}
 
-		ssmClient := awsFactory.SSM()
-		resp, err := ssmClient.ListCommands(&ssm.ListCommandsInput{
-			CommandId: aws.String(commandID),
-		})
-		if err != nil {
-			return err
-		}
+		err = commands.Cancel(&commands.CancelOptions{
+			SSM:   awsFactory.SSM(),
+			S3:    awsFactory.S3(),
+			Store: store.New(awsFactory.DynamoDB()),
 
-		if len(resp.Commands) == 0 {
-			return errors.New("command is not found")
-		}
-		status := *resp.Commands[0].Status
-		if status != "Pending" && status != "InProgress" {
-			return fmt.Errorf("can't cancel the command because its status is %s", status)
-		}
-
-		// Get pcommand ID
-		st := store.New(awsFactory.DynamoDB())
-		r, err := st.GetCommand(commandID)
-		if err != nil {
-			return err
-		}
-		pcommandID := r.PcommandID
-		log.Printf("DEBUG: PcommandID is %+v", r)
-
-		// Put signal
-		payload := map[string]int{
-			"signal": signalNo,
-		}
-		j, err := json.Marshal(payload)
-		if err != nil {
-			return err
-		}
-
-		s3Client := awsFactory.S3()
-		key := fmt.Sprintf("%s%s.json", signalS3KeyPrefix, pcommandID)
-		log.Printf("INFO: putting a signal object to s3://%s/%s", signalS3Bucket, key)
-		_, err = s3Client.PutObject(&s3.PutObjectInput{
-			Body:   bytes.NewReader(j),
-			Bucket: aws.String(signalS3Bucket),
-			Key:    aws.String(key),
+			CommandID:         commandID,
+			SignalS3Bucket:    signalS3Bucket,
+			SignalS3KeyPrefix: signalS3KeyPrefix,
+			SignalNumber:      signalNo,
 		})
 		if err != nil {
 			return err
