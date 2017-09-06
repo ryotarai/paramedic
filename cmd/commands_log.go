@@ -16,12 +16,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/ryotarai/paramedic/awsclient"
+	"github.com/ryotarai/paramedic/outputlog"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,40 +53,17 @@ var commandsLogCmd = &cobra.Command{
 		}
 		pcommandID := r.PcommandID
 
-		cwlogsClient := awsFactory.CloudWatchLogs()
-
-		streamNames := []string{}
-		err = cwlogsClient.DescribeLogStreamsPages(&cloudwatchlogs.DescribeLogStreamsInput{
-			LogGroupName:        aws.String(outputLogGroup),
-			LogStreamNamePrefix: aws.String(fmt.Sprintf("%s/", pcommandID)),
-		}, func(resp *cloudwatchlogs.DescribeLogStreamsOutput, last bool) bool {
-			for _, s := range resp.LogStreams {
-				streamNames = append(streamNames, *s.LogStreamName)
-			}
-			return true
-		})
-		if err != nil {
-			return err
+		watcher := &outputlog.Watcher{
+			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
+			Interval:            10 * time.Second,
+			PrintInterval:       10 * time.Second,
+			StartFromHead:       fromHead,
+			LogGroupName:        outputLogGroup,
+			LogStreamNamePrefix: fmt.Sprintf("%s/", pcommandID),
 		}
+		watcher.Start()
 
-		for _, streamName := range streamNames {
-			parts := strings.Split(streamName, "/")
-			instanceID := parts[len(parts)-1]
-			err = cwlogsClient.GetLogEventsPages(&cloudwatchlogs.GetLogEventsInput{
-				LogGroupName:  aws.String(outputLogGroup),
-				LogStreamName: aws.String(streamName),
-				StartFromHead: aws.Bool(fromHead),
-			}, func(resp *cloudwatchlogs.GetLogEventsOutput, last bool) bool {
-				if len(resp.Events) == 0 {
-					return false
-				}
-				for _, e := range resp.Events {
-					t := time.Unix(0, (*e.Timestamp)*1000*1000)
-					fmt.Printf("%s | %s | %s\n", instanceID, t.Format(time.RFC3339), *e.Message)
-				}
-				return true
-			})
-		}
+		// TODO: exit if the command finished
 
 		return nil
 	},
