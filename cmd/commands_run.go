@@ -19,10 +19,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/google/uuid"
 	"github.com/ryotarai/paramedic/awsclient"
+	"github.com/ryotarai/paramedic/commands"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -53,59 +51,34 @@ var commandsRunCmd = &cobra.Command{
 
 		documentName = fmt.Sprintf("%s%s", documentNamePrefix, documentName)
 
-		pcommandID := uuid.New().String()
-		log.Printf("INFO: pcommand ID is %s", pcommandID)
-
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		targets := []*ssm.Target{}
-		if len(instanceIDs) > 0 {
-			targets = append(targets, &ssm.Target{
-				Key:    aws.String("InstanceIds"),
-				Values: aws.StringSlice(instanceIDs),
-			})
-		}
+		tagMap := map[string][]string{}
 		for _, t := range tags {
-			kv := strings.SplitN(t, ":", 2)
-			k := kv[0]
-			v := strings.Split(kv[1], ",")
-
-			targets = append(targets, &ssm.Target{
-				Key:    aws.String(fmt.Sprintf("tag:%s", k)),
-				Values: aws.StringSlice(v),
-			})
+			parts := strings.SplitN(t, "=", 2)
+			tagMap[parts[0]] = []string{parts[1]}
 		}
 
-		ssmClient := awsFactory.SSM()
-		resp, err := ssmClient.SendCommand(&ssm.SendCommandInput{
-			DocumentName:   aws.String(documentName),
-			Targets:        targets,
-			MaxConcurrency: aws.String(maxConcurrency),
-			MaxErrors:      aws.String(maxErrors),
-			Parameters: map[string][]*string{
-				"outputLogGroup":        []*string{aws.String(outputLogGroup)},
-				"outputLogStreamPrefix": []*string{aws.String(fmt.Sprintf("%s/", pcommandID))},
-				"signalS3Bucket":        []*string{aws.String(signalS3Bucket)},
-				"signalS3Key":           []*string{aws.String(fmt.Sprintf("%s%s.json", signalS3KeyPrefix, pcommandID))},
-			},
+		command, err := commands.Send(&commands.SendOptions{
+			SSM:               awsFactory.SSM(),
+			Store:             store.New(awsFactory.DynamoDB()),
+			DocumentName:      documentName,
+			InstanceIDs:       instanceIDs,
+			Tags:              tagMap,
+			MaxConcurrency:    maxConcurrency,
+			MaxErrors:         maxErrors,
+			OutputLogGroup:    outputLogGroup,
+			SignalS3Bucket:    signalS3Bucket,
+			SignalS3KeyPrefix: signalS3KeyPrefix,
 		})
 		if err != nil {
 			return err
 		}
-		commandID := *resp.Command.CommandId
-		log.Printf("INFO: started a command %s", commandID)
 
-		st := store.New(awsFactory.DynamoDB())
-		err = st.PutCommand(&store.CommandRecord{
-			CommandID:  commandID,
-			PcommandID: pcommandID,
-		})
-		if err != nil {
-			return err
-		}
+		log.Printf("INFO: a command '%s' started", command.CommandID)
 
 		return nil
 	},
@@ -130,7 +103,7 @@ func init() {
 	commandsRunCmd.Flags().String("max-concurrency", "50", "The maximum number of instances that are allowed to execute the command at the same time")
 	commandsRunCmd.Flags().String("max-errors", "50", "The maximum number of errors allowed without the command failing")
 	commandsRunCmd.Flags().StringSlice("instance-ids", []string{}, "Instance IDs")
-	commandsRunCmd.Flags().StringSlice("tags", []string{}, "Instance tags")
+	commandsRunCmd.Flags().StringSlice("tags", []string{}, "Instance tags (e.g. 'Role=app,Env=prod')")
 
 	viper.BindPFlags(commandsRunCmd.Flags())
 }

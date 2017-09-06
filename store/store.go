@@ -22,7 +22,7 @@ func New(dynamodb awsclient.DynamoDB) *Store {
 }
 
 func (s *Store) PutCommand(r *CommandRecord) error {
-	av, err := dynamodbattribute.MarshalMap(*r)
+	av, err := dynamodbattribute.MarshalMap(r)
 	if err != nil {
 		return err
 	}
