@@ -55,8 +55,8 @@ var commandsLogCmd = &cobra.Command{
 
 		watcher := &outputlog.Watcher{
 			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
-			Interval:            10 * time.Second,
-			PrintInterval:       10 * time.Second,
+			Interval:            30 * time.Second,
+			PrintInterval:       30 * time.Second,
 			StartFromHead:       fromHead,
 			LogGroupName:        outputLogGroup,
 			LogStreamNamePrefix: fmt.Sprintf("%s/", pcommandID),

@@ -78,7 +78,7 @@ var commandsRunCmd = &cobra.Command{
 			return err
 		}
 
-		log.Printf("INFO: a command '%s' started", command.CommandID)
+		log.Printf("[INFO] a command '%s' started", command.CommandID)
 
 		return nil
 	},

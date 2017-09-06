@@ -20,14 +20,14 @@ type Printer struct {
 }
 
 func (p *Printer) Start() {
-	log.Printf("DEBUG: starting to print logs of %s/%s", p.LogGroupName, p.LogStreamName)
+	log.Printf("[DEBUG] starting to print logs of %s/%s", p.LogGroupName, p.LogStreamName)
 	parts := strings.Split(p.LogStreamName, "/")
 	instanceID := parts[len(parts)-1]
 
 	var nextToken string
 
 	for {
-		log.Printf("DEBUG: getting logs of %s/%s", p.LogGroupName, p.LogStreamName)
+		log.Printf("[DEBUG] getting logs of %s/%s", p.LogGroupName, p.LogStreamName)
 		input := &cloudwatchlogs.GetLogEventsInput{
 			LogGroupName:  aws.String(p.LogGroupName),
 			LogStreamName: aws.String(p.LogStreamName),
@@ -50,7 +50,7 @@ func (p *Printer) Start() {
 		})
 
 		if err != nil {
-			log.Printf("ERROR: %s", err)
+			log.Printf("[ERROR] %s", err)
 		}
 
 		if p.Interval == time.Duration(0) {

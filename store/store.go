@@ -81,7 +81,7 @@ func (s *Store) CreateTablesIfNotExists() error {
 }
 
 func (s *Store) createTables() error {
-	log.Printf("INFO: creating %s table", commandsTableName)
+	log.Printf("[INFO] Creating %s table", commandsTableName)
 	_, err := s.dynamodb.CreateTable(&dynamodb.CreateTableInput{
 		TableName: aws.String(commandsTableName),
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{

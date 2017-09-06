@@ -22,7 +22,7 @@ func (w *Watcher) Start() {
 	streamNames := []string{}
 
 	for {
-		log.Printf("DEBUG: finding log streams '%s*'", w.LogStreamNamePrefix)
+		log.Printf("[DEBUG] finding log streams '%s*'", w.LogStreamNamePrefix)
 
 		err := w.CloudWatchLogs.DescribeLogStreamsPages(&cloudwatchlogs.DescribeLogStreamsInput{
 			LogGroupName:        aws.String(w.LogGroupName),
@@ -54,7 +54,7 @@ func (w *Watcher) Start() {
 		})
 
 		if err != nil {
-			log.Printf("ERROR: %s", err)
+			log.Printf("[ERROR] %s", err)
 		}
 
 		time.Sleep(w.Interval)

@@ -58,7 +58,7 @@ func Cancel(opts *CancelOptions) error {
 	}
 
 	key := fmt.Sprintf("%s%s.json", opts.SignalS3KeyPrefix, pcommandID)
-	log.Printf("DEBUG: putting a signal object to s3://%s/%s", opts.SignalS3Bucket, key)
+	log.Printf("[DEBUG] putting a signal object to s3://%s/%s", opts.SignalS3Bucket, key)
 	_, err = opts.S3.PutObject(&s3.PutObjectInput{
 		Body:   bytes.NewReader(j),
 		Bucket: aws.String(opts.SignalS3Bucket),

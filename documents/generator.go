@@ -52,7 +52,7 @@ func (g *Generator) createDocument(d *Definition, content string) error {
 		Name: aws.String(name),
 	})
 	if err == nil {
-		log.Printf("INFO: updating a document '%s'", name)
+		log.Printf("[INFO] Updating a document '%s'", name)
 		resp, err := g.SSM.UpdateDocument(&ssm.UpdateDocumentInput{
 			Name:            aws.String(name),
 			Content:         aws.String(content),
@@ -75,7 +75,7 @@ func (g *Generator) createDocument(d *Definition, content string) error {
 			return err
 		}
 		// document does not exist
-		log.Printf("INFO: creating a document '%s'", name)
+		log.Printf("[INFO] Creating a document '%s'", name)
 
 		_, err := g.SSM.CreateDocument(&ssm.CreateDocumentInput{
 			Content:      aws.String(content),
@@ -92,7 +92,7 @@ func (g *Generator) createDocument(d *Definition, content string) error {
 
 func (g *Generator) uploadScript(d *Definition) (string, error) {
 	key := fmt.Sprintf("%s%s-%s", g.ScriptS3KeyPrefix, d.Name, d.ScriptSha256())
-	log.Printf("INFO: uploading a script to s3://%s/%s", g.ScriptS3Bucket, key)
+	log.Printf("[INFO] Uploading a script to s3://%s/%s", g.ScriptS3Bucket, key)
 	input := &s3.PutObjectInput{
 		Body:   strings.NewReader(d.Script),
 		Bucket: aws.String(g.ScriptS3Bucket),
@@ -106,7 +106,7 @@ func (g *Generator) uploadScript(d *Definition) (string, error) {
 }
 
 func (g *Generator) json(d *Definition, scriptKey string) (string, error) {
-	allowedPattern := "[¥¥w-/¥¥.]+"
+	allowedPattern := "[\\w-/\\.]+"
 
 	j := map[string]interface{}{
 		"schemaVersion": "2.2",
