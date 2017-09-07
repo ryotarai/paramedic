@@ -1,15 +1,18 @@
 package commands
 
 import (
+	"github.com/ryotarai/paramedic/documents"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
 type Command struct {
-	CommandID  string
-	PcommandID string
-	Status     string
-	Targets    map[string][]string
+	CommandID    string
+	PcommandID   string
+	Status       string
+	Targets      map[string][]string
+	DocumentName string
 
 	OutputLogGroup        string
 	OutputLogStreamPrefix string
@@ -23,6 +26,8 @@ func commandFromSDK(c *ssm.Command, pcommandID string) *Command {
 		targets[*t.Key] = aws.StringValueSlice(t.Values)
 	}
 
+	doc := documents.ConvertFromSSMName(*c.DocumentName)
+
 	return &Command{
 		CommandID:             *c.CommandId,
 		PcommandID:            pcommandID,
@@ -32,5 +37,6 @@ func commandFromSDK(c *ssm.Command, pcommandID string) *Command {
 		SignalS3Bucket:        *c.Parameters["signalS3Bucket"][0],
 		SignalS3Key:           *c.Parameters["signalS3Key"][0],
 		Targets:               targets,
+		DocumentName:          doc,
 	}
 }

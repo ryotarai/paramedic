@@ -19,6 +19,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/ryotarai/paramedic/documents"
+
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
 	"github.com/ryotarai/paramedic/store"
@@ -41,7 +43,6 @@ var commandsRunCmd = &cobra.Command{
 			}
 		}
 
-		documentNamePrefix := viper.GetString("document-name-prefix")
 		documentName := viper.GetString("document-name")
 		maxConcurrency := viper.GetString("max-concurrency")
 		maxErrors := viper.GetString("max-errors")
@@ -51,7 +52,7 @@ var commandsRunCmd = &cobra.Command{
 		signalS3Bucket := viper.GetString("signal-s3-bucket")
 		signalS3KeyPrefix := viper.GetString("signal-s3-key-prefix")
 
-		documentName = fmt.Sprintf("%s%s", documentNamePrefix, documentName)
+		documentName = documents.ConvertToSSMName(documentName)
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
@@ -120,7 +121,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	commandsRunCmd.Flags().String("document-name", "", "Document name")
-	commandsRunCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
 	commandsRunCmd.Flags().String("output-log-group", "paramedic", "Log group")
 	commandsRunCmd.Flags().String("signal-s3-bucket", "", "S3 bucket to store a signal object")
 	commandsRunCmd.Flags().String("signal-s3-key-prefix", "signals/", "S3 key prefix to store a signal object")

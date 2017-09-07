@@ -6,12 +6,10 @@ import (
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-
-	"github.com/aws/aws-sdk-go/service/ssm"
-
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/ryotarai/paramedic/awsclient"
 )
 
@@ -19,11 +17,10 @@ type Generator struct {
 	S3  awsclient.S3
 	SSM awsclient.SSM
 
-	ScriptS3Bucket     string
-	ScriptS3KeyPrefix  string
-	DocumentNamePrefix string
-	AgentPath          string
-	Region             string
+	ScriptS3Bucket    string
+	ScriptS3KeyPrefix string
+	AgentPath         string
+	Region            string
 }
 
 func (g *Generator) Create(d *Definition) error {
@@ -46,7 +43,7 @@ func (g *Generator) Create(d *Definition) error {
 }
 
 func (g *Generator) createDocument(d *Definition, content string) error {
-	name := fmt.Sprintf("%s%s", g.DocumentNamePrefix, d.Name)
+	name := ConvertToSSMName(d.Name)
 
 	_, err := g.SSM.DescribeDocument(&ssm.DescribeDocumentInput{
 		Name: aws.String(name),

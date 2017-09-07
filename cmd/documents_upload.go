@@ -33,7 +33,6 @@ var uploadCmd = &cobra.Command{
 
 		scriptS3Bucket := viper.GetString("script-s3-bucket")
 		scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
-		documentNamePrefix := viper.GetString("document-name-prefix")
 		agentPath := viper.GetString("agent-path")
 
 		awsFactory, err := awsclient.NewFactory()
@@ -47,13 +46,12 @@ var uploadCmd = &cobra.Command{
 		}
 
 		generator := documents.Generator{
-			S3:                 awsFactory.S3(),
-			SSM:                awsFactory.SSM(),
-			ScriptS3Bucket:     scriptS3Bucket,
-			ScriptS3KeyPrefix:  scriptS3KeyPrefix,
-			DocumentNamePrefix: documentNamePrefix,
-			AgentPath:          agentPath,
-			Region:             awsFactory.Region(),
+			S3:                awsFactory.S3(),
+			SSM:               awsFactory.SSM(),
+			ScriptS3Bucket:    scriptS3Bucket,
+			ScriptS3KeyPrefix: scriptS3KeyPrefix,
+			AgentPath:         agentPath,
+			Region:            awsFactory.Region(),
 		}
 		err = generator.Create(def)
 		if err != nil {
@@ -82,6 +80,5 @@ func init() {
 	// is called directly, e.g.:
 	uploadCmd.Flags().String("script-s3-bucket", "", "S3 bucket to store a script file")
 	uploadCmd.Flags().String("script-s3-key-prefix", "", "S3 key prefix to store a script file")
-	uploadCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
 	uploadCmd.Flags().String("agent-path", "paramedic-agent", "Path to paramedic-agent binary")
 }
