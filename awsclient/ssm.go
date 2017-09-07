@@ -12,4 +12,5 @@ type SSM interface {
 	SendCommand(*ssm.SendCommandInput) (*ssm.SendCommandOutput, error)
 	ListCommands(*ssm.ListCommandsInput) (*ssm.ListCommandsOutput, error)
 	DescribeInstanceInformationPages(*ssm.DescribeInstanceInformationInput, func(*ssm.DescribeInstanceInformationOutput, bool) bool) error
+	ListDocumentsPages(*ssm.ListDocumentsInput, func(*ssm.ListDocumentsOutput, bool) bool) error
 }
