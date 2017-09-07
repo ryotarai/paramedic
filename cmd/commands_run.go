@@ -33,6 +33,8 @@ var commandsRunCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		for _, k := range []string{"document-name", "output-log-group", "signal-s3-bucket"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
@@ -126,6 +128,4 @@ func init() {
 	commandsRunCmd.Flags().String("max-errors", "50", "The maximum number of errors allowed without the command failing")
 	commandsRunCmd.Flags().StringSlice("instance-ids", []string{}, "Instance IDs")
 	commandsRunCmd.Flags().StringSlice("tags", []string{}, "Instance tags (e.g. 'Role=app,Env=prod')")
-
-	viper.BindPFlags(commandsRunCmd.Flags())
 }

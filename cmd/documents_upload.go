@@ -29,6 +29,8 @@ var uploadCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		scriptS3Bucket := viper.GetString("script-s3-bucket")
 		scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
 		documentNamePrefix := viper.GetString("document-name-prefix")
@@ -82,6 +84,4 @@ func init() {
 	uploadCmd.Flags().String("script-s3-key-prefix", "", "S3 key prefix to store a script file")
 	uploadCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
 	uploadCmd.Flags().String("agent-path", "paramedic-agent", "Path to paramedic-agent binary")
-
-	viper.BindPFlags(uploadCmd.Flags())
 }

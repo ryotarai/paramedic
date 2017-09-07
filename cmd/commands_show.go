@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
@@ -24,22 +25,18 @@ import (
 	"github.com/spf13/viper"
 )
 
-// uploadCmd represents the upload command
-var commandsCancelCmd = &cobra.Command{
-	Use:           "cancel",
-	Short:         "Cancel a command",
+var commandsShowCmd = &cobra.Command{
+	Use:           "show",
+	Short:         "Show a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
-
 		for _, k := range []string{"command-id"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
 			}
 		}
 		commandID := viper.GetString("command-id")
-		signalNo := viper.GetInt("signal")
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
@@ -55,21 +52,21 @@ var commandsCancelCmd = &cobra.Command{
 			return err
 		}
 
-		err = commands.Cancel(&commands.CancelOptions{
-			S3:           awsFactory.S3(),
-			Command:      command,
-			SignalNumber: signalNo,
-		})
-		if err != nil {
-			return err
-		}
+		log.Printf("[INFO] Command ID: %s", command.CommandID)
+		log.Printf("[INFO] Status: %s", command.Status)
+		log.Printf("[INFO] Targets: %s", command.Targets)
+		log.Printf("[DEBUG] Paramedic Command ID: %s", command.PcommandID)
+		log.Printf("[DEBUG] OutputLogGroup: %s", command.OutputLogGroup)
+		log.Printf("[DEBUG] OutputLogStreamPrefix: %s", command.OutputLogStreamPrefix)
+		log.Printf("[DEBUG] SignalS3Bucket: %s", command.SignalS3Bucket)
+		log.Printf("[DEBUG] SignalS3Key: %s", command.SignalS3Key)
 
 		return nil
 	},
 }
 
 func init() {
-	commandsCmd.AddCommand(commandsCancelCmd)
+	commandsCmd.AddCommand(commandsShowCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -79,6 +76,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	commandsCancelCmd.Flags().String("command-id", "", "Command ID to be canceled")
-	commandsCancelCmd.Flags().Int("signal", 15, "Signal number to be sent to the processes")
+	commandsShowCmd.Flags().String("command-id", "", "Command ID")
+
+	viper.BindPFlags(commandsShowCmd.Flags())
 }

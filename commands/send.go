@@ -68,10 +68,7 @@ func Send(opts *SendOptions) (*Command, error) {
 		return nil, err
 	}
 
-	return &Command{
-		CommandID:  commandID,
-		PcommandID: pcommandID,
-	}, nil
+	return commandFromSDK(resp.Command, pcommandID), nil
 }
 
 func generatePcommandID() string {
