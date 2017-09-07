@@ -62,6 +62,28 @@ var commandsRunCmd = &cobra.Command{
 			tagMap[parts[0]] = []string{parts[1]}
 		}
 
+		instances, err := commands.GetInstances(&commands.GetInstancesOptions{
+			SSM:         awsFactory.SSM(),
+			InstanceIDs: instanceIDs,
+			Tags:        tagMap,
+		})
+		if err != nil {
+			return err
+		}
+
+		log.Println("[INFO] This command will be executed on the following instances")
+		for _, i := range instances {
+			log.Printf("[INFO] - %s (%s)", i.ComputerName, i.InstanceID)
+		}
+		cont, err := askContinue("Are you sure to continue?")
+		if err != nil {
+			return err
+		}
+		if !cont {
+			fmt.Println("Canceled.")
+			return nil
+		}
+
 		command, err := commands.Send(&commands.SendOptions{
 			SSM:               awsFactory.SSM(),
 			Store:             store.New(awsFactory.DynamoDB()),
@@ -78,7 +100,7 @@ var commandsRunCmd = &cobra.Command{
 			return err
 		}
 
-		log.Printf("[INFO] a command '%s' started", command.CommandID)
+		log.Printf("[INFO] A command '%s' started", command.CommandID)
 
 		return nil
 	},

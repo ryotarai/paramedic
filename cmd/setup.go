@@ -15,10 +15,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/store"
@@ -40,14 +37,12 @@ to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("This command will do the following things")
 		fmt.Println("- Creating 'ParamedicCommands' DynamoDB table")
-		fmt.Print("Are you sure to continue? (y/N): ")
 
-		r := bufio.NewReader(os.Stdin)
-		line, err := r.ReadString('\n')
+		cont, err := askContinue("Are you sure to continue?")
 		if err != nil {
 			return err
 		}
-		if !strings.HasPrefix(line, "y") {
+		if !cont {
 			fmt.Println("Canceled.")
 			return nil
 		}
