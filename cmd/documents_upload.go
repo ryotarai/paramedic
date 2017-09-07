@@ -79,6 +79,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	uploadCmd.Flags().String("script-s3-bucket", "", "S3 bucket to store a script file")
-	uploadCmd.Flags().String("script-s3-key-prefix", "", "S3 key prefix to store a script file")
+	uploadCmd.Flags().String("script-s3-key-prefix", "scripts/", "S3 key prefix to store a script file")
 	uploadCmd.Flags().String("agent-path", "paramedic-agent", "Path to paramedic-agent binary")
 }
