@@ -31,6 +31,8 @@ var commandsShowCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		for _, k := range []string{"command-id"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
@@ -53,6 +55,7 @@ var commandsShowCmd = &cobra.Command{
 		}
 
 		log.Printf("[INFO] Command ID: %s", command.CommandID)
+		log.Printf("[INFO] Document: %s", command.DocumentName)
 		log.Printf("[INFO] Status: %s", command.Status)
 		log.Printf("[INFO] Targets: %s", command.Targets)
 		log.Printf("[DEBUG] Paramedic Command ID: %s", command.PcommandID)
@@ -77,6 +80,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	commandsShowCmd.Flags().String("command-id", "", "Command ID")
-
-	viper.BindPFlags(commandsShowCmd.Flags())
 }
