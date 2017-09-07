@@ -35,7 +35,7 @@ var commandsRunCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 
-		for _, k := range []string{"document-name", "output-log-group", "signal-s3-bucket"} {
+		for _, k := range []string{"document-name", "signal-s3-bucket"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
 			}
@@ -121,7 +121,7 @@ func init() {
 	// is called directly, e.g.:
 	commandsRunCmd.Flags().String("document-name", "", "Document name")
 	commandsRunCmd.Flags().String("document-name-prefix", "paramedic-", "Prefix of document name")
-	commandsRunCmd.Flags().String("output-log-group", "", "Log group")
+	commandsRunCmd.Flags().String("output-log-group", "paramedic", "Log group")
 	commandsRunCmd.Flags().String("signal-s3-bucket", "", "S3 bucket to store a signal object")
 	commandsRunCmd.Flags().String("signal-s3-key-prefix", "signals/", "S3 key prefix to store a signal object")
 	commandsRunCmd.Flags().String("max-concurrency", "50", "The maximum number of instances that are allowed to execute the command at the same time")
