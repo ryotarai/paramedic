@@ -6,6 +6,9 @@ default: build
 build: 
 	go build -ldflags "-X main.GitCommit=$(COMMIT)" -o bin/paramedic .
 
+install: 
+	go install -ldflags "-X main.GitCommit=$(COMMIT)" .
+
 buildx:
 	gox -ldflags "-X main.GitCommit=$(COMMIT)" -output "bin/v$(VERSION)/{{.Dir}}_{{.OS}}_{{.Arch}}_$(VERSION)" -arch "amd64" -os "linux darwin" .
 
