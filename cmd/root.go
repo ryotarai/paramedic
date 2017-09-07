@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/hashicorp/logutils"
 	homedir "github.com/mitchellh/go-homedir"
@@ -75,6 +76,22 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
+		dir, err := os.Getwd()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for {
+			viper.AddConfigPath(dir)
+
+			d := filepath.Join(dir, "..")
+			if d == dir {
+				break
+			}
+			dir = d
+		}
+
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
