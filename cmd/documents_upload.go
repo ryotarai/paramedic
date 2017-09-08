@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/documents"
 	"github.com/spf13/cobra"
@@ -30,6 +32,12 @@ var uploadCmd = &cobra.Command{
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
+
+		for _, k := range []string{"script-s3-bucket"} {
+			if viper.GetString(k) == "" {
+				return fmt.Errorf("%s is required", k)
+			}
+		}
 
 		scriptS3Bucket := viper.GetString("script-s3-bucket")
 		scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
@@ -57,11 +65,6 @@ var uploadCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		// awsFactory := awsclient.NewFactory()
-		// ssm := awsFactory.SSM()
-
-		// uploader := documents.NewUploader()
 
 		return nil
 	},

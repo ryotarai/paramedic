@@ -16,9 +16,11 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ryotarai/paramedic/awsclient"
+	"github.com/ryotarai/paramedic/commands"
 	"github.com/ryotarai/paramedic/outputlog"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
@@ -32,6 +34,8 @@ var commandsLogCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		for _, k := range []string{"command-id", "output-log-group"} {
 			if viper.GetString(k) == "" {
 				return fmt.Errorf("%s is required", k)
@@ -40,6 +44,7 @@ var commandsLogCmd = &cobra.Command{
 		outputLogGroup := viper.GetString("output-log-group")
 		commandID := viper.GetString("command-id")
 		fromHead := viper.GetBool("from-head")
+		follow := viper.GetBool("follow")
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
@@ -61,9 +66,30 @@ var commandsLogCmd = &cobra.Command{
 			LogGroupName:        outputLogGroup,
 			LogStreamNamePrefix: fmt.Sprintf("%s/", pcommandID),
 		}
-		watcher.Start()
+		watcher.Once()
 
-		// TODO: exit if the command finished
+		if !follow {
+			return nil
+		}
+
+		go watcher.Follow()
+
+		for {
+			command, err := commands.Get(&commands.GetOptions{
+				SSM:       awsFactory.SSM(),
+				Store:     store.New(awsFactory.DynamoDB()),
+				CommandID: commandID,
+			})
+			if err != nil {
+				return err
+			}
+
+			if command.Status != "Pending" && command.Status != "InProgress" {
+				log.Printf("[INFO] exiting because command %s is in status %s", commandID, command.Status)
+				break
+			}
+			time.Sleep(30 * time.Second)
+		}
 
 		return nil
 	},
@@ -83,6 +109,5 @@ func init() {
 	commandsLogCmd.Flags().String("command-id", "", "Command ID")
 	commandsLogCmd.Flags().String("output-log-group", "", "Log group")
 	commandsLogCmd.Flags().Bool("from-head", false, "Read logs from head")
-
-	viper.BindPFlags(commandsLogCmd.Flags())
+	commandsLogCmd.Flags().BoolP("follow", "f", false, "Follow logs")
 }
