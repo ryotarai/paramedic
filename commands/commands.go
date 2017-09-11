@@ -40,3 +40,19 @@ func commandFromSDK(c *ssm.Command, pcommandID string) *Command {
 		DocumentName:          doc,
 	}
 }
+
+type CommandInvocation struct {
+	CommandID    string
+	InstanceID   string
+	InstanceName string
+	Status       string
+}
+
+func commandInvocationFromSDK(c *ssm.CommandInvocation) *CommandInvocation {
+	return &CommandInvocation{
+		CommandID:    *c.CommandId,
+		InstanceID:   *c.InstanceId,
+		InstanceName: *c.InstanceName,
+		Status:       *c.Status,
+	}
+}

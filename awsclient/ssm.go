@@ -11,6 +11,7 @@ type SSM interface {
 	UpdateDocumentDefaultVersion(*ssm.UpdateDocumentDefaultVersionInput) (*ssm.UpdateDocumentDefaultVersionOutput, error)
 	SendCommand(*ssm.SendCommandInput) (*ssm.SendCommandOutput, error)
 	ListCommands(*ssm.ListCommandsInput) (*ssm.ListCommandsOutput, error)
+	ListCommandInvocationsPages(*ssm.ListCommandInvocationsInput, func(*ssm.ListCommandInvocationsOutput, bool) bool) error
 	DescribeInstanceInformationPages(*ssm.DescribeInstanceInformationInput, func(*ssm.DescribeInstanceInformationOutput, bool) bool) error
 	ListDocumentsPages(*ssm.ListDocumentsInput, func(*ssm.ListDocumentsOutput, bool) bool) error
 }

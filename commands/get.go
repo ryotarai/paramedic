@@ -35,3 +35,26 @@ func Get(opts *GetOptions) (*Command, error) {
 
 	return commandFromSDK(resp.Commands[0], r.PcommandID), nil
 }
+
+type GetInvocationsOptions struct {
+	SSM awsclient.SSM
+
+	CommandID string
+}
+
+func GetInvocations(opts *GetInvocationsOptions) ([]*CommandInvocation, error) {
+	invocations := []*CommandInvocation{}
+
+	err := opts.SSM.ListCommandInvocationsPages(&ssm.ListCommandInvocationsInput{
+		CommandId: aws.String(opts.CommandID),
+	}, func(resp *ssm.ListCommandInvocationsOutput, last bool) bool {
+		for _, i := range resp.CommandInvocations {
+			invocations = append(invocations, commandInvocationFromSDK(i))
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	return invocations, nil
+}

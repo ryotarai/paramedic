@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
@@ -54,15 +53,28 @@ var commandsShowCmd = &cobra.Command{
 			return err
 		}
 
-		log.Printf("[INFO] Command ID: %s", command.CommandID)
-		log.Printf("[INFO] Document: %s", command.DocumentName)
-		log.Printf("[INFO] Status: %s", command.Status)
-		log.Printf("[INFO] Targets: %s", command.Targets)
-		log.Printf("[DEBUG] Paramedic Command ID: %s", command.PcommandID)
-		log.Printf("[DEBUG] OutputLogGroup: %s", command.OutputLogGroup)
-		log.Printf("[DEBUG] OutputLogStreamPrefix: %s", command.OutputLogStreamPrefix)
-		log.Printf("[DEBUG] SignalS3Bucket: %s", command.SignalS3Bucket)
-		log.Printf("[DEBUG] SignalS3Key: %s", command.SignalS3Key)
+		fmt.Printf("Command ID: %s\n", command.CommandID)
+		fmt.Printf("Document: %s\n", command.DocumentName)
+		fmt.Printf("Status: %s\n", command.Status)
+		fmt.Printf("Targets: %s\n", command.Targets)
+		fmt.Printf("Paramedic Command ID: %s\n", command.PcommandID)
+		fmt.Printf("OutputLogGroup: %s\n", command.OutputLogGroup)
+		fmt.Printf("OutputLogStreamPrefix: %s\n", command.OutputLogStreamPrefix)
+		fmt.Printf("SignalS3Bucket: %s\n", command.SignalS3Bucket)
+		fmt.Printf("SignalS3Key: %s\n", command.SignalS3Key)
+		fmt.Print("\nInstances:\n")
+
+		invocations, err := commands.GetInvocations(&commands.GetInvocationsOptions{
+			SSM:       awsFactory.SSM(),
+			CommandID: commandID,
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, i := range invocations {
+			fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
+		}
 
 		return nil
 	},
