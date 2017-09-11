@@ -16,6 +16,8 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
@@ -46,7 +48,8 @@ var commandsCancelCmd = &cobra.Command{
 			return err
 		}
 
-		command, err := commands.Get(&commands.GetOptions{
+		var command *commands.Command
+		command, err = commands.Get(&commands.GetOptions{
 			SSM:       awsFactory.SSM(),
 			Store:     store.New(awsFactory.DynamoDB()),
 			CommandID: commandID,
@@ -63,6 +66,25 @@ var commandsCancelCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		log.Printf("[INFO] Canceling a command %s", commandID)
+
+		for {
+			command, err = commands.Get(&commands.GetOptions{
+				SSM:       awsFactory.SSM(),
+				Store:     store.New(awsFactory.DynamoDB()),
+				CommandID: commandID,
+			})
+			if err != nil {
+				return err
+			}
+			if command.Status != "Pending" && command.Status != "InProgress" {
+				break
+			}
+			time.Sleep(15 * time.Second)
+		}
+
+		log.Printf("[INFO] The command is canceled, it is in %s state", command.Status)
 
 		return nil
 	},
