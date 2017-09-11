@@ -104,6 +104,9 @@ var commandsRunCmd = &cobra.Command{
 		}
 
 		log.Printf("[INFO] A command '%s' started", command.CommandID)
+		log.Printf("[INFO] To see status, run 'paramedic commands show --command-id=%s'", command.CommandID)
+		log.Printf("[INFO] To watch logs, run 'paramedic commands log --command-id=%s'", command.CommandID)
+		log.Printf("[INFO] To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
 
 		return nil
 	},
