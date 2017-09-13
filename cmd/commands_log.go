@@ -74,22 +74,15 @@ var commandsLogCmd = &cobra.Command{
 
 		go watcher.Follow()
 
-		for {
-			command, err := commands.Get(&commands.GetOptions{
-				SSM:       awsFactory.SSM(),
-				Store:     store.New(awsFactory.DynamoDB()),
-				CommandID: commandID,
-			})
-			if err != nil {
-				return err
-			}
+		command := commands.WaitStatus(&commands.WaitStatusOptions{
+			SSM:       awsFactory.SSM(),
+			Store:     st,
+			CommandID: commandID,
+			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
+		})
+		log.Printf("[INFO] The command is in %s status", command.Status)
 
-			if command.Status != "Pending" && command.Status != "InProgress" {
-				log.Printf("[INFO] exiting because command %s is in status %s", commandID, command.Status)
-				break
-			}
-			time.Sleep(30 * time.Second)
-		}
+		// TODO: flush logs
 
 		return nil
 	},
