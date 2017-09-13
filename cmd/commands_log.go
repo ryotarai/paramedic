@@ -81,9 +81,9 @@ var commandsLogCmd = &cobra.Command{
 			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
 		})
 		command := <-c
-		log.Printf("[INFO] The command is in %s status", command.Status)
 
-		// TODO: flush logs
+		watcher.Stop()
+		log.Printf("[INFO] The command is in %s status", command.Status)
 
 		return nil
 	},

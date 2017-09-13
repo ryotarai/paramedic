@@ -19,9 +19,13 @@ type Watcher struct {
 	LogStreamNamePrefix string
 
 	printers []*Printer
+	stopCh   chan struct{}
 }
 
 func (w *Watcher) Follow() {
+	w.stopCh = make(chan struct{})
+
+	last := false
 	for {
 		w.findStreams()
 
@@ -31,8 +35,33 @@ func (w *Watcher) Follow() {
 			}
 		}
 
-		time.Sleep(w.Interval)
+		if last {
+			log.Printf("[DEBUG] Stopping all printers managed by a watcher")
+			var wg sync.WaitGroup
+			for _, p := range w.printers {
+				wg.Add(1)
+				go func(p *Printer) {
+					defer wg.Done()
+					p.Stop()
+				}(p)
+			}
+			wg.Wait()
+			w.stopCh <- struct{}{}
+			return
+		}
+
+		select {
+		case <-time.After(w.Interval):
+		case <-w.stopCh:
+			log.Printf("[DEBUG] Stopping a watcher")
+			last = true
+		}
 	}
+}
+
+func (w *Watcher) Stop() {
+	w.stopCh <- struct{}{}
+	<-w.stopCh
 }
 
 func (w *Watcher) Once() {
@@ -51,7 +80,7 @@ func (w *Watcher) Once() {
 }
 
 func (w *Watcher) findStreams() {
-	log.Printf("[DEBUG] finding log streams '%s*'", w.LogStreamNamePrefix)
+	log.Printf("[DEBUG] Finding log streams '%s*'", w.LogStreamNamePrefix)
 
 	err := w.CloudWatchLogs.DescribeLogStreamsPages(&cloudwatchlogs.DescribeLogStreamsInput{
 		LogGroupName:        aws.String(w.LogGroupName),

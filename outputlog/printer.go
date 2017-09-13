@@ -20,14 +20,33 @@ type Printer struct {
 	Following      bool
 
 	nextToken string
+	stopCh    chan struct{}
 }
 
 func (p *Printer) Follow() {
+	p.stopCh = make(chan struct{})
 	p.Following = true
+
+	last := false
 	for {
 		p.Once()
-		time.Sleep(p.Interval)
+		if last {
+			p.stopCh <- struct{}{}
+			return
+		}
+
+		select {
+		case <-time.After(p.Interval):
+		case <-p.stopCh:
+			log.Printf("[DEBUG] Stopping a printer")
+			last = true
+		}
 	}
+}
+
+func (p *Printer) Stop() {
+	p.stopCh <- struct{}{}
+	<-p.stopCh
 }
 
 func (p *Printer) Once() {

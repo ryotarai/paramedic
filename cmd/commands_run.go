@@ -116,8 +116,8 @@ var commandsRunCmd = &cobra.Command{
 		// Follow log
 		watcher := &outputlog.Watcher{
 			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
-			Interval:            30 * time.Second,
-			PrintInterval:       30 * time.Second,
+			Interval:            15 * time.Second,
+			PrintInterval:       15 * time.Second,
 			StartFromHead:       true,
 			LogGroupName:        outputLogGroup,
 			LogStreamNamePrefix: fmt.Sprintf("%s/", command.PcommandID),
@@ -140,7 +140,9 @@ var commandsRunCmd = &cobra.Command{
 			fmt.Print("Interrupted\n")
 			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
 		case c := <-statusCh:
-			log.Printf("[INFO] The command is %s", c.Status)
+			log.Printf("[DEBUG] The command is in %s status", c.Status)
+			watcher.Stop()
+			log.Printf("[INFO] The command is in %s status", c.Status)
 		}
 
 		return nil

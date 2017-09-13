@@ -20,19 +20,22 @@ type WaitStatusOptions struct {
 func WaitStatus(opts *WaitStatusOptions) chan *Command {
 	interval := opts.Interval
 	if interval == time.Duration(0) {
-		interval = 30 * time.Second
+		interval = 15 * time.Second
 	}
 
 	c := make(chan *Command)
 
 	go func() {
 		for {
+			log.Printf("[DEBUG] Checking status of command %s", opts.CommandID)
 			command, err := Get(&GetOptions{
 				SSM:       opts.SSM,
 				Store:     opts.Store,
 				CommandID: opts.CommandID,
 			})
-			log.Printf("[WARN] %s", err)
+			if err != nil {
+				log.Printf("[WARN] %s", err)
+			}
 
 			for _, st := range opts.Statuses {
 				if command.Status == st {

@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/logutils"
 	homedir "github.com/mitchellh/go-homedir"
@@ -44,7 +45,7 @@ to quickly create a Cobra application.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		filter := &logutils.LevelFilter{
 			Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-			MinLevel: logutils.LogLevel(logLevel),
+			MinLevel: logutils.LogLevel(strings.ToUpper(logLevel)),
 			Writer:   os.Stdout,
 		}
 		log.SetOutput(filter)
