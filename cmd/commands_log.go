@@ -74,12 +74,13 @@ var commandsLogCmd = &cobra.Command{
 
 		go watcher.Follow()
 
-		command := commands.WaitStatus(&commands.WaitStatusOptions{
+		c := commands.WaitStatus(&commands.WaitStatusOptions{
 			SSM:       awsFactory.SSM(),
 			Store:     st,
 			CommandID: commandID,
 			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
 		})
+		command := <-c
 		log.Printf("[INFO] The command is in %s status", command.Status)
 
 		// TODO: flush logs

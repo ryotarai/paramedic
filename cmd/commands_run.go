@@ -17,9 +17,14 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/ryotarai/paramedic/documents"
+	"github.com/ryotarai/paramedic/outputlog"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
@@ -86,10 +91,11 @@ var commandsRunCmd = &cobra.Command{
 			fmt.Println("Canceled.")
 			return nil
 		}
+		st := store.New(awsFactory.DynamoDB())
 
 		command, err := commands.Send(&commands.SendOptions{
 			SSM:               awsFactory.SSM(),
-			Store:             store.New(awsFactory.DynamoDB()),
+			Store:             st,
 			DocumentName:      documentName,
 			InstanceIDs:       instanceIDs,
 			Tags:              tagMap,
@@ -104,9 +110,38 @@ var commandsRunCmd = &cobra.Command{
 		}
 
 		log.Printf("[INFO] A command '%s' started", command.CommandID)
-		log.Printf("[INFO] To see status, run 'paramedic commands show --command-id=%s'", command.CommandID)
-		log.Printf("[INFO] To watch logs, run 'paramedic commands log --command-id=%s'", command.CommandID)
-		log.Printf("[INFO] To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
+		log.Printf("[INFO] To see the command status, run 'paramedic commands show --command-id=%s'", command.CommandID)
+		log.Print("[INFO] Output logs will be shown below")
+
+		// Follow log
+		watcher := &outputlog.Watcher{
+			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
+			Interval:            30 * time.Second,
+			PrintInterval:       30 * time.Second,
+			StartFromHead:       true,
+			LogGroupName:        outputLogGroup,
+			LogStreamNamePrefix: fmt.Sprintf("%s/", command.PcommandID),
+		}
+		go watcher.Follow()
+
+		statusCh := commands.WaitStatus(&commands.WaitStatusOptions{
+			SSM:       awsFactory.SSM(),
+			Store:     st,
+			CommandID: command.CommandID,
+			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
+		})
+
+		// Wait until interrupted
+		sigCh := make(chan os.Signal)
+		signal.Notify(sigCh, syscall.SIGINT)
+
+		select {
+		case <-sigCh:
+			fmt.Print("Interrupted\n")
+			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
+		case c := <-statusCh:
+			log.Printf("[INFO] The command is %s", c.Status)
+		}
 
 		return nil
 	},
