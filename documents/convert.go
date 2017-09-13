@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+func IsParamedicDocument(name string) bool {
+	return strings.HasPrefix(name, "paramedic-")
+}
+
 func ConvertToSSMName(name string) string {
 	return fmt.Sprintf("paramedic-%s", name)
 }

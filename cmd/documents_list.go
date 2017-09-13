@@ -42,6 +42,9 @@ var documentsListCmd = &cobra.Command{
 
 		err = ssmClient.ListDocumentsPages(&ssm.ListDocumentsInput{}, func(resp *ssm.ListDocumentsOutput, last bool) bool {
 			for _, i := range resp.DocumentIdentifiers {
+				if !documents.IsParamedicDocument(*i.Name) {
+					continue
+				}
 				name := documents.ConvertFromSSMName(*i.Name)
 				log.Printf("[INFO] - %s", name)
 			}
