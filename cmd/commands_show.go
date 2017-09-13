@@ -38,6 +38,7 @@ var commandsShowCmd = &cobra.Command{
 			}
 		}
 		commandID := viper.GetString("command-id")
+		detail := viper.GetBool("detail")
 
 		awsFactory, err := awsclient.NewFactory()
 		if err != nil {
@@ -57,11 +58,13 @@ var commandsShowCmd = &cobra.Command{
 		fmt.Printf("Document: %s\n", command.DocumentName)
 		fmt.Printf("Status: %s\n", command.Status)
 		fmt.Printf("Targets: %s\n", command.Targets)
-		fmt.Printf("Paramedic Command ID: %s\n", command.PcommandID)
-		fmt.Printf("OutputLogGroup: %s\n", command.OutputLogGroup)
-		fmt.Printf("OutputLogStreamPrefix: %s\n", command.OutputLogStreamPrefix)
-		fmt.Printf("SignalS3Bucket: %s\n", command.SignalS3Bucket)
-		fmt.Printf("SignalS3Key: %s\n", command.SignalS3Key)
+		if detail {
+			fmt.Printf("Paramedic Command ID: %s\n", command.PcommandID)
+			fmt.Printf("OutputLogGroup: %s\n", command.OutputLogGroup)
+			fmt.Printf("OutputLogStreamPrefix: %s\n", command.OutputLogStreamPrefix)
+			fmt.Printf("SignalS3Bucket: %s\n", command.SignalS3Bucket)
+			fmt.Printf("SignalS3Key: %s\n", command.SignalS3Key)
+		}
 		fmt.Print("\nInstances:\n")
 
 		invocations, err := commands.GetInvocations(&commands.GetInvocationsOptions{
@@ -92,4 +95,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	commandsShowCmd.Flags().String("command-id", "", "Command ID")
+	commandsShowCmd.Flags().Bool("detail", false, "Show details")
 }
