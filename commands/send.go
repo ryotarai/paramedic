@@ -42,6 +42,7 @@ func Send(opts *SendOptions) (*Command, error) {
 		})
 	}
 
+	// TODO: write output to S3
 	resp, err := opts.SSM.SendCommand(&ssm.SendCommandInput{
 		DocumentName:   aws.String(opts.DocumentName),
 		Targets:        targets,
