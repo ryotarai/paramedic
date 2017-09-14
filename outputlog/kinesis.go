@@ -15,10 +15,11 @@ import (
 	"github.com/ryotarai/paramedic/awsclient"
 )
 
+const kinesisStreamName = "paramedic-logs" // TODO: configurable
+
 type KinesisReader struct {
 	Kinesis         awsclient.Kinesis
 	StartTimestamp  time.Time
-	StreamName      string
 	LogGroup        string
 	LogStreamPrefix string
 
@@ -111,7 +112,7 @@ func (r *KinesisReader) initShardIterator() error {
 	r.shardIterator = map[string]string{}
 
 	resp, err := r.Kinesis.DescribeStream(&kinesis.DescribeStreamInput{
-		StreamName: aws.String(r.StreamName),
+		StreamName: aws.String(kinesisStreamName),
 	})
 	if err != nil {
 		return err
@@ -120,7 +121,7 @@ func (r *KinesisReader) initShardIterator() error {
 	for _, s := range resp.StreamDescription.Shards {
 		id := *s.ShardId
 		resp, err := r.Kinesis.GetShardIterator(&kinesis.GetShardIteratorInput{
-			StreamName:        aws.String(r.StreamName),
+			StreamName:        aws.String(kinesisStreamName),
 			ShardId:           aws.String(id),
 			ShardIteratorType: aws.String("AT_TIMESTAMP"),
 			Timestamp:         aws.Time(r.StartTimestamp),

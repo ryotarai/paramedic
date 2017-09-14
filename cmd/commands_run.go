@@ -117,7 +117,6 @@ var commandsRunCmd = &cobra.Command{
 		reader := &outputlog.KinesisReader{
 			Kinesis:         awsFactory.Kinesis(),
 			StartTimestamp:  time.Now(),
-			StreamName:      "paramedic-logs", // TODO: configurable
 			LogGroup:        outputLogGroup,
 			LogStreamPrefix: logStreamPrefix,
 		}
