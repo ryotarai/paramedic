@@ -93,6 +93,7 @@ var commandsRunCmd = &cobra.Command{
 		}
 		st := store.New(awsFactory.DynamoDB())
 
+		startTime := time.Now()
 		command, err := commands.Send(&commands.SendOptions{
 			SSM:               awsFactory.SSM(),
 			Store:             st,
@@ -116,7 +117,7 @@ var commandsRunCmd = &cobra.Command{
 		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
 		reader := &outputlog.KinesisReader{
 			Kinesis:         awsFactory.Kinesis(),
-			StartTimestamp:  time.Now(),
+			StartTimestamp:  startTime,
 			LogGroup:        outputLogGroup,
 			LogStreamPrefix: logStreamPrefix,
 		}
