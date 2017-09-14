@@ -17,7 +17,6 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
@@ -69,22 +68,15 @@ var commandsCancelCmd = &cobra.Command{
 
 		log.Printf("[INFO] Canceling a command %s", commandID)
 
-		for {
-			command, err = commands.Get(&commands.GetOptions{
-				SSM:       awsFactory.SSM(),
-				Store:     store.New(awsFactory.DynamoDB()),
-				CommandID: commandID,
-			})
-			if err != nil {
-				return err
-			}
-			if command.Status != "Pending" && command.Status != "InProgress" {
-				break
-			}
-			time.Sleep(15 * time.Second)
-		}
+		ch := commands.WaitStatus(&commands.WaitStatusOptions{
+			SSM:       awsFactory.SSM(),
+			Store:     st,
+			CommandID: command.CommandID,
+			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
+		})
+		command := <-ch
 
-		log.Printf("[INFO] The command is canceled, it is in %s state", command.Status)
+		log.Printf("[INFO] The command is now in %s state", command.Status)
 
 		return nil
 	},
