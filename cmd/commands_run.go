@@ -113,23 +113,37 @@ var commandsRunCmd = &cobra.Command{
 		log.Printf("[INFO] To see the command status, run 'paramedic commands show --command-id=%s'", command.CommandID)
 		log.Print("[INFO] Output logs will be shown below")
 
-		// Follow log
-		watcher := &outputlog.Watcher{
-			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
-			Interval:            15 * time.Second,
-			PrintInterval:       15 * time.Second,
-			StartFromHead:       true,
-			LogGroupName:        outputLogGroup,
-			LogStreamNamePrefix: fmt.Sprintf("%s/", command.PcommandID),
+		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
+		reader := &outputlog.KinesisReader{
+			Kinesis:         awsFactory.Kinesis(),
+			StartTimestamp:  time.Now(),
+			StreamName:      "paramedic-logs", // TODO: configurable
+			LogGroup:        outputLogGroup,
+			LogStreamPrefix: logStreamPrefix,
 		}
-		go watcher.Follow()
 
-		statusCh := commands.WaitStatus(&commands.WaitStatusOptions{
+		ch := commands.WaitStatus(&commands.WaitStatusOptions{
 			SSM:       awsFactory.SSM(),
 			Store:     st,
 			CommandID: command.CommandID,
 			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
 		})
+
+		printer := outputlog.NewPrinter(os.Stdout)
+
+		stopCh := make(chan struct{})
+		go func() {
+			command := <-ch
+			log.Printf("[DEBUG] The command is now in %s status.", command.Status)
+			time.Sleep(10 * time.Second) // Wait for propagation of logs
+			stopCh <- struct{}{}
+		}()
+
+		exitCh := make(chan struct{})
+		go func() {
+			outputlog.Follow(reader, printer, stopCh)
+			exitCh <- struct{}{}
+		}()
 
 		// Wait until interrupted
 		sigCh := make(chan os.Signal)
@@ -139,10 +153,7 @@ var commandsRunCmd = &cobra.Command{
 		case <-sigCh:
 			fmt.Print("Interrupted\n")
 			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
-		case c := <-statusCh:
-			log.Printf("[DEBUG] The command is in %s status", c.Status)
-			watcher.Stop()
-			log.Printf("[INFO] The command is in %s status", c.Status)
+		case <-exitCh:
 		}
 
 		return nil

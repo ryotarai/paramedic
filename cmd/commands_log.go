@@ -17,11 +17,13 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
-	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
 	"github.com/ryotarai/paramedic/outputlog"
+
+	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -43,7 +45,6 @@ var commandsLogCmd = &cobra.Command{
 		}
 		outputLogGroup := viper.GetString("output-log-group")
 		commandID := viper.GetString("command-id")
-		fromHead := viper.GetBool("from-head")
 		follow := viper.GetBool("follow")
 
 		awsFactory, err := awsclient.NewFactory()
@@ -57,33 +58,45 @@ var commandsLogCmd = &cobra.Command{
 			return err
 		}
 		pcommandID := r.PcommandID
+		logStreamPrefix := fmt.Sprintf("%s/", pcommandID)
 
-		watcher := &outputlog.Watcher{
-			CloudWatchLogs:      awsFactory.CloudWatchLogs(),
-			Interval:            30 * time.Second,
-			PrintInterval:       30 * time.Second,
-			StartFromHead:       fromHead,
-			LogGroupName:        outputLogGroup,
-			LogStreamNamePrefix: fmt.Sprintf("%s/", pcommandID),
+		var reader outputlog.Reader
+		if follow {
+			reader = &outputlog.KinesisReader{
+				Kinesis:         awsFactory.Kinesis(),
+				StartTimestamp:  time.Now(),
+				StreamName:      "paramedic-logs", // TODO: configurable
+				LogGroup:        outputLogGroup,
+				LogStreamPrefix: logStreamPrefix,
+			}
+		} else {
+			reader = &outputlog.CloudWatchLogsReader{
+				CloudWatchLogs:  awsFactory.CloudWatchLogs(),
+				LogGroup:        outputLogGroup,
+				LogStreamPrefix: logStreamPrefix,
+			}
 		}
-		watcher.Once()
 
-		if !follow {
-			return nil
-		}
-
-		go watcher.Follow()
-
-		c := commands.WaitStatus(&commands.WaitStatusOptions{
+		ch := commands.WaitStatus(&commands.WaitStatusOptions{
 			SSM:       awsFactory.SSM(),
 			Store:     st,
 			CommandID: commandID,
 			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
 		})
-		command := <-c
 
-		watcher.Stop()
-		log.Printf("[INFO] The command is in %s status", command.Status)
+		printer := outputlog.NewPrinter(os.Stdout)
+
+		stopCh := make(chan struct{})
+		go func() {
+			if follow {
+				command := <-ch
+				log.Printf("[DEBUG] The command is now in %s status.", command.Status)
+				time.Sleep(10 * time.Second) // Wait for propagation of logs
+			}
+			stopCh <- struct{}{}
+		}()
+
+		outputlog.Follow(reader, printer, stopCh)
 
 		return nil
 	},
@@ -102,6 +115,5 @@ func init() {
 	// is called directly, e.g.:
 	commandsLogCmd.Flags().String("command-id", "", "Command ID")
 	commandsLogCmd.Flags().String("output-log-group", "", "Log group")
-	commandsLogCmd.Flags().Bool("from-head", false, "Read logs from head")
 	commandsLogCmd.Flags().BoolP("follow", "f", false, "Follow logs")
 }
