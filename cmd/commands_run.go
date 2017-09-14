@@ -81,7 +81,7 @@ var commandsRunCmd = &cobra.Command{
 
 		log.Println("[INFO] This command will be executed on the following instances")
 		for _, i := range instances {
-			log.Printf("[INFO] - %s (%s)", i.ComputerName, i.InstanceID)
+			log.Printf("[INFO]   %s (%s)", i.ComputerName, i.InstanceID)
 		}
 		cont, err := askContinue("Are you sure to continue?")
 		if err != nil {
@@ -153,7 +153,21 @@ var commandsRunCmd = &cobra.Command{
 		case <-sigCh:
 			fmt.Print("Interrupted\n")
 			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
+			return nil
 		case <-exitCh:
+		}
+
+		invocations, err := commands.GetInvocations(&commands.GetInvocationsOptions{
+			SSM:       awsFactory.SSM(),
+			CommandID: command.CommandID,
+		})
+		if err != nil {
+			return err
+		}
+
+		fmt.Print("\n")
+		for _, i := range invocations {
+			fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
 		}
 
 		return nil
