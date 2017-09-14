@@ -19,13 +19,13 @@ type Watcher struct {
 	LogStreamNamePrefix string
 
 	printers []*Printer
-	stopCh   chan struct{}
+	stopCh   chan chan struct{}
 }
 
 func (w *Watcher) Follow() {
-	w.stopCh = make(chan struct{})
+	w.stopCh = make(chan chan struct{})
 
-	last := false
+	var c chan struct{}
 	for {
 		w.findStreams()
 
@@ -35,7 +35,7 @@ func (w *Watcher) Follow() {
 			}
 		}
 
-		if last {
+		if c != nil {
 			log.Printf("[DEBUG] Stopping all printers managed by a watcher")
 			var wg sync.WaitGroup
 			for _, p := range w.printers {
@@ -46,22 +46,22 @@ func (w *Watcher) Follow() {
 				}(p)
 			}
 			wg.Wait()
-			w.stopCh <- struct{}{}
+			c <- struct{}{}
 			return
 		}
 
 		select {
 		case <-time.After(w.Interval):
-		case <-w.stopCh:
+		case c = <-w.stopCh:
 			log.Printf("[DEBUG] Stopping a watcher")
-			last = true
 		}
 	}
 }
 
 func (w *Watcher) Stop() {
-	w.stopCh <- struct{}{}
-	<-w.stopCh
+	c := make(chan struct{})
+	w.stopCh <- c
+	<-c
 }
 
 func (w *Watcher) Once() {
