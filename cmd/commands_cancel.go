@@ -47,10 +47,12 @@ var commandsCancelCmd = &cobra.Command{
 			return err
 		}
 
+		st := store.New(awsFactory.DynamoDB())
+
 		var command *commands.Command
 		command, err = commands.Get(&commands.GetOptions{
 			SSM:       awsFactory.SSM(),
-			Store:     store.New(awsFactory.DynamoDB()),
+			Store:     st,
 			CommandID: commandID,
 		})
 		if err != nil {
@@ -74,7 +76,7 @@ var commandsCancelCmd = &cobra.Command{
 			CommandID: command.CommandID,
 			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
 		})
-		command := <-ch
+		command = <-ch
 
 		log.Printf("[INFO] The command is now in %s state", command.Status)
 
