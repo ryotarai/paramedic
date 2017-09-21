@@ -4,13 +4,13 @@ VERSION = $(shell grep Version paramedic/version.go | sed -E 's/.*"(.+)"$$/\1/')
 default: build
 
 build: 
-	go build -ldflags "-X main.GitCommit=$(COMMIT)" -o bin/paramedic .
+	go build -ldflags "-X github.com/ryotarai/paramedic/paramedic.GitCommit=$(COMMIT)" -o bin/paramedic .
 
 install: 
-	go install -ldflags "-X main.GitCommit=$(COMMIT)" .
+	go install -ldflags "-X github.com/ryotarai/paramedic/paramedic.GitCommit=$(COMMIT)" .
 
 buildx:
-	gox -ldflags "-X main.GitCommit=$(COMMIT)" -output "bin/v$(VERSION)/{{.Dir}}_{{.OS}}_{{.Arch}}_$(VERSION)" -arch "amd64" -os "linux darwin" .
+	gox -ldflags "-X github.com/ryotarai/paramedic/paramedic.GitCommit=$(COMMIT)" -output "bin/v$(VERSION)/{{.Dir}}_{{.OS}}_{{.Arch}}_$(VERSION)" -arch "amd64" -os "linux darwin" .
 
 test:
 	go test -v $(shell go list ./... | grep -v /vendor/)
