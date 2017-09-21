@@ -1,5 +1,18 @@
 # Paramedic
 
+## Setup
+
+```
+$ paramedic setup
+```
+
+### Configure Kinesis Streams
+
+Create a stream named `paramedic-logs` and configure subscription from CloudWatch Logs:
+http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#DestinationKinesisExample
+
+Note that the filter pattern should be empty.
+
 ## Usage
 
 Prepare YAML file which defines a command to be run like:
