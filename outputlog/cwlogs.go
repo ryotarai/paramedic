@@ -1,6 +1,7 @@
 package outputlog
 
 import (
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,6 +20,7 @@ func (r *CloudWatchLogsReader) Read() ([]*Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[DEBUG] %d streams are found: %s", len(streams), streams)
 
 	events := []*Event{}
 	for _, s := range streams {
@@ -54,6 +56,7 @@ func (r *CloudWatchLogsReader) getLogStreams() ([]string, error) {
 }
 
 func (r *CloudWatchLogsReader) getEvents(logStream string) ([]*Event, error) {
+	log.Printf("[DEBUG] Getting log events from %s stream", logStream)
 	events := []*Event{}
 
 	input := &cloudwatchlogs.GetLogEventsInput{
