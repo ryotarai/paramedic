@@ -85,17 +85,22 @@ var commandsLogCmd = &cobra.Command{
 
 		printer := outputlog.NewPrinter(os.Stdout)
 
-		stopCh := make(chan struct{})
-		go func() {
-			if follow {
+		if follow {
+			stopCh := make(chan struct{})
+			go func() {
 				command := <-ch
 				log.Printf("[DEBUG] The command is now in %s status.", command.Status)
 				time.Sleep(10 * time.Second) // Wait for propagation of logs
+				stopCh <- struct{}{}
+			}()
+			outputlog.Follow(reader, printer, stopCh)
+		} else {
+			events, err := reader.Read()
+			if err != nil {
+				return err
 			}
-			stopCh <- struct{}{}
-		}()
-
-		outputlog.Follow(reader, printer, stopCh)
+			printer.Print(events)
+		}
 
 		return nil
 	},
