@@ -155,6 +155,7 @@ var commandsRunCmd = &cobra.Command{
 		select {
 		case <-sigCh:
 			fmt.Print("Interrupted\n")
+			log.Printf("[INFO] To follow output logs, run 'paramedic commands log --command-id=%s --follow'", command.CommandID)
 			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
 			return nil
 		case <-exitCh:
