@@ -141,7 +141,10 @@ var commandsRunCmd = &cobra.Command{
 
 		exitCh := make(chan struct{})
 		go func() {
-			outputlog.Follow(reader, printer, stopCh)
+			err := outputlog.Follow(reader, printer, stopCh)
+			if err != nil {
+				log.Printf("[WARN] %s", err)
+			}
 			exitCh <- struct{}{}
 		}()
 
