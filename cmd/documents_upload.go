@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/documents"
@@ -27,7 +28,7 @@ import (
 var uploadCmd = &cobra.Command{
 	Use:           "upload",
 	Short:         "Upload a document",
-	Args:          cobra.ExactArgs(1),
+	Args:          cobra.MinimumNArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -48,11 +49,6 @@ var uploadCmd = &cobra.Command{
 			return err
 		}
 
-		def, err := documents.LoadDefinition(args[0])
-		if err != nil {
-			return err
-		}
-
 		generator := documents.Generator{
 			S3:                awsFactory.S3(),
 			SSM:               awsFactory.SSM(),
@@ -61,9 +57,17 @@ var uploadCmd = &cobra.Command{
 			AgentPath:         agentPath,
 			Region:            awsFactory.Region(),
 		}
-		err = generator.Create(def)
-		if err != nil {
-			return err
+
+		for _, arg := range args {
+			log.Printf("[INFO] Uploading %s", arg)
+			def, err := documents.LoadDefinition(arg)
+			if err != nil {
+				return err
+			}
+			err = generator.Create(def)
+			if err != nil {
+				log.Printf("[WARN] %s", err)
+			}
 		}
 
 		return nil
