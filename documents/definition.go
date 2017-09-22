@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -42,8 +43,11 @@ func LoadDefinition(file string) (*Definition, error) {
 	}
 
 	if d.Name == "" {
-		return nil, errors.New("name is not set")
+		base := filepath.Base(file)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		d.Name = name
 	}
+
 	if d.Script == "" {
 		if d.ScriptFile == "" {
 			return nil, errors.New("neither script nor scriptFile is not set")
