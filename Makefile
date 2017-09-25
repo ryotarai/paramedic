@@ -11,7 +11,7 @@ install:
 
 buildx:
 	gox -ldflags "-X github.com/ryotarai/paramedic/paramedic.GitCommit=$(COMMIT)" -output "bin/v$(VERSION)/{{.Dir}}_{{.OS}}_{{.Arch}}_$(VERSION)" -arch "amd64" -os "linux darwin" .
-	gzip -k _bin/v$(VERSION)/*
+	gzip -k bin/v$(VERSION)/*
 
 test:
 	go test -v $(shell go list ./... | grep -v /vendor/)

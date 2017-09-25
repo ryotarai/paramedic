@@ -7,17 +7,18 @@ import (
 )
 
 type Printer struct {
-	writer io.Writer
+	Writer           io.Writer
+	InstanceIDToName map[string]string
 }
 
 func NewPrinter(writer io.Writer) *Printer {
 	return &Printer{
-		writer: writer,
+		Writer: writer,
 	}
 }
 
 func (p *Printer) Print(events []*Event) {
 	for _, e := range events {
-		fmt.Fprintf(p.writer, "[%s] [%s] %s\n", e.Timestamp.Format(time.RFC3339), e.InstanceID(), e.Message)
+		fmt.Fprintf(p.Writer, "[%s] [%s] %s\n", e.Timestamp.Format(time.RFC3339), e.InstanceID(), e.Message)
 	}
 }
