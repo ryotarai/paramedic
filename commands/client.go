@@ -116,6 +116,7 @@ func (c *Client) GetInstances(instanceIDs []string, tags map[string][]string) ([
 			i := &Instance{
 				InstanceID:   *info.InstanceId,
 				ComputerName: *info.ComputerName,
+				PingStatus:   *info.PingStatus,
 			}
 			instances = append(instances, i)
 		}

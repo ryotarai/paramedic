@@ -88,6 +88,12 @@ var commandsRunCmd = &cobra.Command{
 		for _, i := range instances {
 			log.Printf("[INFO]   %s (%s)", i.ComputerName, i.InstanceID)
 		}
+		for _, i := range instances {
+			if i.PingStatus != "Online" {
+				log.Printf("[WARN] %s (%s) is in %s status", i.ComputerName, i.InstanceID, i.PingStatus)
+			}
+		}
+
 		cont, err := askContinue("Are you sure to continue?")
 		if err != nil {
 			return err
