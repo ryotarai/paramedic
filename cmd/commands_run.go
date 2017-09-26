@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -72,6 +73,10 @@ var commandsRunCmd = &cobra.Command{
 		for _, t := range tags {
 			parts := strings.SplitN(t, "=", 2)
 			tagMap[parts[0]] = []string{parts[1]}
+		}
+
+		if len(instanceIDs) == 0 && len(tagMap) == 0 {
+			return errors.New("Both instance IDs and tags are not specified")
 		}
 
 		instances, err := cmdClient.GetInstances(instanceIDs, tagMap)
