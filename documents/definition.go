@@ -71,12 +71,6 @@ func (d *Definition) DocumentContent(bucket, key string) (string, error) {
 		"schemaVersion": "2.2",
 		"description":   d.Description,
 		"parameters": map[string]map[string]string{
-			"executionTimeout": map[string]string{
-				"type":           "String",
-				"default":        "3600",
-				"description":    "(Optional) The time in seconds for a command to be completed before it is considered to have failed. Default is 3600 (1 hour). Maximum is 28800 (8 hours).",
-				"allowedPattern": "([1-9][0-9]{0,3})|(1[0-9]{1,4})|(2[0-7][0-9]{1,3})|(28[0-7][0-9]{1,2})|(28800)",
-			},
 			"outputLogGroup": map[string]string{
 				"type":           "String",
 				"description":    "(Required) Log group name",
@@ -112,7 +106,6 @@ func (d *Definition) DocumentContent(bucket, key string) (string, error) {
 						fmt.Sprintf("export PARAMEDIC_SCRIPT_S3_KEY=%s", key),
 						"exec paramedic-agent",
 					},
-					"timeoutSeconds": "{{ executionTimeout }}",
 				},
 			},
 		},
