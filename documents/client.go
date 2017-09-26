@@ -37,14 +37,18 @@ func (c *Client) Create(d *Definition) error {
 	})
 	if err == nil {
 		// existing
-		c.updateDocument(name, content)
+		if err := c.updateDocument(name, content); err != nil {
+			return err
+		}
 	} else {
 		aErr, ok := err.(awserr.Error)
 		if !ok || aErr.Code() != ssm.ErrCodeInvalidDocument {
 			return err
 		}
 		// document does not exist
-		c.createDocument(name, content)
+		if err := c.createDocument(name, content); err != nil {
+			return err
+		}
 	}
 	return nil
 }
