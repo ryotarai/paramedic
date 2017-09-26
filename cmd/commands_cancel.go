@@ -19,8 +19,6 @@ import (
 	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
-	"github.com/ryotarai/paramedic/commands"
-	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -42,41 +40,30 @@ var commandsCancelCmd = &cobra.Command{
 		commandID := viper.GetString("command-id")
 		signalNo := viper.GetInt("signal")
 
-		awsFactory, err := awsclient.NewFactory()
+		awsf, err := awsclient.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		st := store.New(awsFactory.DynamoDB())
-
-		var command *commands.Command
-		command, err = commands.Get(&commands.GetOptions{
-			SSM:       awsFactory.SSM(),
-			Store:     st,
-			CommandID: commandID,
-		})
+		cmdClient, err := newCommandsClient(awsf)
 		if err != nil {
 			return err
 		}
 
-		err = commands.Cancel(&commands.CancelOptions{
-			S3:           awsFactory.S3(),
-			Command:      command,
-			SignalNumber: signalNo,
-		})
+		command, err := cmdClient.Get(commandID)
+		if err != nil {
+			return err
+		}
+
+		err = cmdClient.Cancel(command, signalNo)
 		if err != nil {
 			return err
 		}
 
 		log.Printf("[INFO] Canceling a command %s", commandID)
 
-		ch := commands.WaitStatus(&commands.WaitStatusOptions{
-			SSM:       awsFactory.SSM(),
-			Store:     st,
-			CommandID: command.CommandID,
-			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
-		})
-		command = <-ch
+		canceled := []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"}
+		command = <-cmdClient.WaitStatus(command.CommandID, canceled)
 
 		log.Printf("[INFO] The command is now in %s state", command.Status)
 

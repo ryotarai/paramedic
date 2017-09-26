@@ -28,7 +28,6 @@ import (
 
 	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/commands"
-	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -59,7 +58,12 @@ var commandsRunCmd = &cobra.Command{
 
 		documentName = documents.ConvertToSSMName(documentName)
 
-		awsFactory, err := awsclient.NewFactory()
+		awsf, err := awsclient.NewFactory()
+		if err != nil {
+			return err
+		}
+
+		cmdClient, err := newCommandsClient(awsf)
 		if err != nil {
 			return err
 		}
@@ -70,11 +74,7 @@ var commandsRunCmd = &cobra.Command{
 			tagMap[parts[0]] = []string{parts[1]}
 		}
 
-		instances, err := commands.GetInstances(&commands.GetInstancesOptions{
-			SSM:         awsFactory.SSM(),
-			InstanceIDs: instanceIDs,
-			Tags:        tagMap,
-		})
+		instances, err := cmdClient.GetInstances(instanceIDs, tagMap)
 		if err != nil {
 			return err
 		}
@@ -91,12 +91,9 @@ var commandsRunCmd = &cobra.Command{
 			fmt.Println("Canceled.")
 			return nil
 		}
-		st := store.New(awsFactory.DynamoDB())
 
 		startTime := time.Now()
-		command, err := commands.Send(&commands.SendOptions{
-			SSM:               awsFactory.SSM(),
-			Store:             st,
+		command, err := cmdClient.Send(&commands.SendOptions{
 			DocumentName:      documentName,
 			InstanceIDs:       instanceIDs,
 			Tags:              tagMap,
@@ -116,24 +113,17 @@ var commandsRunCmd = &cobra.Command{
 
 		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
 		reader := &outputlog.KinesisReader{
-			Kinesis:         awsFactory.Kinesis(),
+			Kinesis:         awsf.Kinesis(),
 			StartTimestamp:  startTime,
 			LogGroup:        outputLogGroup,
 			LogStreamPrefix: logStreamPrefix,
 		}
 
-		ch := commands.WaitStatus(&commands.WaitStatusOptions{
-			SSM:       awsFactory.SSM(),
-			Store:     st,
-			CommandID: command.CommandID,
-			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
-		})
-
 		printer := outputlog.NewPrinter(os.Stdout)
 
 		stopCh := make(chan struct{})
 		go func() {
-			command := <-ch
+			command := <-cmdClient.WaitStatus(command.CommandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
 			log.Printf("[DEBUG] The command is now in %s status.", command.Status)
 			time.Sleep(10 * time.Second) // Wait for propagation of logs
 			stopCh <- struct{}{}
@@ -161,10 +151,7 @@ var commandsRunCmd = &cobra.Command{
 		case <-exitCh:
 		}
 
-		invocations, err := commands.GetInvocations(&commands.GetInvocationsOptions{
-			SSM:       awsFactory.SSM(),
-			CommandID: command.CommandID,
-		})
+		invocations, err := cmdClient.GetInvocations(command.CommandID)
 		if err != nil {
 			return err
 		}

@@ -18,8 +18,6 @@ import (
 	"fmt"
 
 	"github.com/ryotarai/paramedic/awsclient"
-	"github.com/ryotarai/paramedic/commands"
-	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,16 +38,17 @@ var commandsShowCmd = &cobra.Command{
 		commandID := viper.GetString("command-id")
 		detail := viper.GetBool("detail")
 
-		awsFactory, err := awsclient.NewFactory()
+		awsf, err := awsclient.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		command, err := commands.Get(&commands.GetOptions{
-			SSM:       awsFactory.SSM(),
-			Store:     store.New(awsFactory.DynamoDB()),
-			CommandID: commandID,
-		})
+		cmdClient, err := newCommandsClient(awsf)
+		if err != nil {
+			return err
+		}
+
+		command, err := cmdClient.Get(commandID)
 		if err != nil {
 			return err
 		}
@@ -67,10 +66,7 @@ var commandsShowCmd = &cobra.Command{
 		}
 		fmt.Print("\nInstances:\n")
 
-		invocations, err := commands.GetInvocations(&commands.GetInvocationsOptions{
-			SSM:       awsFactory.SSM(),
-			CommandID: commandID,
-		})
+		invocations, err := cmdClient.GetInvocations(commandID)
 		if err != nil {
 			return err
 		}

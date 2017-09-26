@@ -20,11 +20,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ryotarai/paramedic/commands"
+	"github.com/ryotarai/paramedic/awsclient"
 	"github.com/ryotarai/paramedic/outputlog"
 
-	"github.com/ryotarai/paramedic/awsclient"
-	"github.com/ryotarai/paramedic/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,48 +45,45 @@ var commandsLogCmd = &cobra.Command{
 		commandID := viper.GetString("command-id")
 		follow := viper.GetBool("follow")
 
-		awsFactory, err := awsclient.NewFactory()
+		awsf, err := awsclient.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		st := store.New(awsFactory.DynamoDB())
-		r, err := st.GetCommand(commandID)
+		cmdClient, err := newCommandsClient(awsf)
 		if err != nil {
 			return err
 		}
-		pcommandID := r.PcommandID
-		logStreamPrefix := fmt.Sprintf("%s/", pcommandID)
+
+		command, err := cmdClient.Get(commandID)
+		if err != nil {
+			return err
+		}
+
+		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
 
 		var reader outputlog.Reader
 		if follow {
 			reader = &outputlog.KinesisReader{
-				Kinesis:         awsFactory.Kinesis(),
+				Kinesis:         awsf.Kinesis(),
 				StartTimestamp:  time.Now(),
 				LogGroup:        outputLogGroup,
 				LogStreamPrefix: logStreamPrefix,
 			}
 		} else {
 			reader = &outputlog.CloudWatchLogsReader{
-				CloudWatchLogs:  awsFactory.CloudWatchLogs(),
+				CloudWatchLogs:  awsf.CloudWatchLogs(),
 				LogGroup:        outputLogGroup,
 				LogStreamPrefix: logStreamPrefix,
 			}
 		}
-
-		ch := commands.WaitStatus(&commands.WaitStatusOptions{
-			SSM:       awsFactory.SSM(),
-			Store:     st,
-			CommandID: commandID,
-			Statuses:  []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"},
-		})
 
 		printer := outputlog.NewPrinter(os.Stdout)
 
 		if follow {
 			stopCh := make(chan struct{})
 			go func() {
-				command := <-ch
+				command := <-cmdClient.WaitStatus(commandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
 				log.Printf("[DEBUG] The command is now in %s status.", command.Status)
 				time.Sleep(10 * time.Second) // Wait for propagation of logs
 				stopCh <- struct{}{}
