@@ -1,0 +1,2 @@
+description: Reload nginx via systemctl
+scriptFile: reload-nginx
