@@ -79,6 +79,8 @@ var commandsRunCmd = &cobra.Command{
 			return errors.New("Both instance IDs and tags are not specified")
 		}
 
+		log.Printf("[INFO] %s will run under max concurrency %s and max errors %s", documentName, maxConcurrency, maxErrors)
+
 		instances, err := cmdClient.GetInstances(instanceIDs, tagMap)
 		if err != nil {
 			return err
