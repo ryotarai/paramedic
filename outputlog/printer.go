@@ -22,8 +22,9 @@ func NewPrinter(writer io.Writer) *Printer {
 func (p *Printer) Print(events []*Event) {
 	for _, e := range events {
 		fmt.Fprintf(p.Writer,
-			"%s %s\n",
-			p.colorer.Color(e.InstanceID()).Sprintf("%s | %s |", e.Timestamp.Format("15:04:05"), e.InstanceID()),
+			"%s | %s | %s\n",
+			e.Timestamp.Format("15:04:05"),
+			p.colorer.Color(e.InstanceID()).Sprint(e.InstanceID()),
 			e.Message)
 	}
 }
