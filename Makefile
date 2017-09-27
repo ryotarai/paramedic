@@ -29,4 +29,4 @@ dep:
 	dep status
 
 ensureclean:
-	git status | grep 'working tree clean'
+	git status | grep -q 'working tree clean'
