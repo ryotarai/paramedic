@@ -19,7 +19,7 @@ test:
 bench:
 	go test -bench .
 
-release: buildx
+release: ensureclean buildx
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
 	ghr v$(VERSION) _bin/v$(VERSION)/
@@ -27,3 +27,6 @@ release: buildx
 dep:
 	dep ensure
 	dep status
+
+ensureclean:
+	git status | grep 'working tree clean'
