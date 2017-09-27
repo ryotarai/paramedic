@@ -114,5 +114,5 @@ func init() {
 	// is called directly, e.g.:
 	commandsLogCmd.Flags().String("command-id", "", "Command ID")
 	commandsLogCmd.Flags().String("output-log-group", "", "Log group")
-	commandsLogCmd.Flags().BoolP("follow", "f", false, "Follow logs")
+	commandsLogCmd.Flags().BoolP("follow", "f", false, "Follow logs like `tail -f -n0` (Kinesis Streams will be used)")
 }
