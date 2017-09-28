@@ -31,43 +31,45 @@ var uploadCmd = &cobra.Command{
 	Args:          cobra.MinimumNArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          documentsUploadHandler,
+}
 
-		for _, k := range []string{"script-s3-bucket"} {
-			if viper.GetString(k) == "" {
-				return fmt.Errorf("%s is required", k)
-			}
+func documentsUploadHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	for _, k := range []string{"script-s3-bucket"} {
+		if viper.GetString(k) == "" {
+			return fmt.Errorf("%s is required", k)
 		}
+	}
 
-		scriptS3Bucket := viper.GetString("script-s3-bucket")
-		scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
+	scriptS3Bucket := viper.GetString("script-s3-bucket")
+	scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
 
-		awsf, err := awsclient.NewFactory()
+	awsf, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
+
+	docClient, err := newDocumentsClient(awsf, scriptS3Bucket, scriptS3KeyPrefix)
+	if err != nil {
+		return err
+	}
+
+	for _, arg := range args {
+		log.Printf("[INFO] Uploading %s", arg)
+		def, err := documents.LoadDefinition(arg)
 		if err != nil {
 			return err
 		}
 
-		docClient, err := newDocumentsClient(awsf, scriptS3Bucket, scriptS3KeyPrefix)
+		err = docClient.Create(def)
 		if err != nil {
-			return err
+			log.Printf("[WARN] %s", err)
 		}
+	}
 
-		for _, arg := range args {
-			log.Printf("[INFO] Uploading %s", arg)
-			def, err := documents.LoadDefinition(arg)
-			if err != nil {
-				return err
-			}
-
-			err = docClient.Create(def)
-			if err != nil {
-				log.Printf("[WARN] %s", err)
-			}
-		}
-
-		return nil
-	},
+	return nil
 }
 
 func init() {

@@ -27,56 +27,58 @@ var commandsShowCmd = &cobra.Command{
 	Short:         "Show a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          commandsShowHandler,
+}
 
-		for _, k := range []string{"command-id"} {
-			if viper.GetString(k) == "" {
-				return fmt.Errorf("%s is required", k)
-			}
+func commandsShowHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	for _, k := range []string{"command-id"} {
+		if viper.GetString(k) == "" {
+			return fmt.Errorf("%s is required", k)
 		}
-		commandID := viper.GetString("command-id")
-		detail := viper.GetBool("detail")
+	}
+	commandID := viper.GetString("command-id")
+	detail := viper.GetBool("detail")
 
-		awsf, err := awsclient.NewFactory()
-		if err != nil {
-			return err
-		}
+	awsf, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
 
-		cmdClient, err := newCommandsClient(awsf)
-		if err != nil {
-			return err
-		}
+	cmdClient, err := newCommandsClient(awsf)
+	if err != nil {
+		return err
+	}
 
-		command, err := cmdClient.Get(commandID)
-		if err != nil {
-			return err
-		}
+	command, err := cmdClient.Get(commandID)
+	if err != nil {
+		return err
+	}
 
-		fmt.Printf("Command ID: %s\n", command.CommandID)
-		fmt.Printf("Document: %s\n", command.DocumentName)
-		fmt.Printf("Status: %s\n", command.Status)
-		fmt.Printf("Targets: %s\n", command.Targets)
-		if detail {
-			fmt.Printf("Paramedic Command ID: %s\n", command.PcommandID)
-			fmt.Printf("OutputLogGroup: %s\n", command.OutputLogGroup)
-			fmt.Printf("OutputLogStreamPrefix: %s\n", command.OutputLogStreamPrefix)
-			fmt.Printf("SignalS3Bucket: %s\n", command.SignalS3Bucket)
-			fmt.Printf("SignalS3Key: %s\n", command.SignalS3Key)
-		}
-		fmt.Print("\nInstances:\n")
+	fmt.Printf("Command ID: %s\n", command.CommandID)
+	fmt.Printf("Document: %s\n", command.DocumentName)
+	fmt.Printf("Status: %s\n", command.Status)
+	fmt.Printf("Targets: %s\n", command.Targets)
+	if detail {
+		fmt.Printf("Paramedic Command ID: %s\n", command.PcommandID)
+		fmt.Printf("OutputLogGroup: %s\n", command.OutputLogGroup)
+		fmt.Printf("OutputLogStreamPrefix: %s\n", command.OutputLogStreamPrefix)
+		fmt.Printf("SignalS3Bucket: %s\n", command.SignalS3Bucket)
+		fmt.Printf("SignalS3Key: %s\n", command.SignalS3Key)
+	}
+	fmt.Print("\nInstances:\n")
 
-		invocations, err := cmdClient.GetInvocations(commandID)
-		if err != nil {
-			return err
-		}
+	invocations, err := cmdClient.GetInvocations(commandID)
+	if err != nil {
+		return err
+	}
 
-		for _, i := range invocations {
-			fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
-		}
+	for _, i := range invocations {
+		fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
+	}
 
-		return nil
-	},
+	return nil
 }
 
 func init() {

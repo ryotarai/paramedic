@@ -39,143 +39,145 @@ var commandsRunCmd = &cobra.Command{
 	Short:         "Run a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          commandsRunHandler,
+}
 
-		for _, k := range []string{"document-name", "signal-s3-bucket"} {
-			if viper.GetString(k) == "" {
-				return fmt.Errorf("%s is required", k)
-			}
+func commandsRunHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	for _, k := range []string{"document-name", "signal-s3-bucket"} {
+		if viper.GetString(k) == "" {
+			return fmt.Errorf("%s is required", k)
 		}
+	}
 
-		documentName := viper.GetString("document-name")
-		maxConcurrency := viper.GetString("max-concurrency")
-		maxErrors := viper.GetString("max-errors")
-		instanceIDs := viper.GetStringSlice("instance-ids")
-		tags := viper.GetStringSlice("tags")
-		outputLogGroup := viper.GetString("output-log-group")
-		signalS3Bucket := viper.GetString("signal-s3-bucket")
-		signalS3KeyPrefix := viper.GetString("signal-s3-key-prefix")
+	documentName := viper.GetString("document-name")
+	maxConcurrency := viper.GetString("max-concurrency")
+	maxErrors := viper.GetString("max-errors")
+	instanceIDs := viper.GetStringSlice("instance-ids")
+	tags := viper.GetStringSlice("tags")
+	outputLogGroup := viper.GetString("output-log-group")
+	signalS3Bucket := viper.GetString("signal-s3-bucket")
+	signalS3KeyPrefix := viper.GetString("signal-s3-key-prefix")
 
-		documentName = documents.ConvertToSSMName(documentName)
+	documentName = documents.ConvertToSSMName(documentName)
 
-		awsf, err := awsclient.NewFactory()
-		if err != nil {
-			return err
+	awsf, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
+
+	cmdClient, err := newCommandsClient(awsf)
+	if err != nil {
+		return err
+	}
+
+	tagMap := map[string][]string{}
+	for _, t := range tags {
+		parts := strings.SplitN(t, "=", 2)
+		tagMap[parts[0]] = []string{parts[1]}
+	}
+
+	if len(instanceIDs) == 0 && len(tagMap) == 0 {
+		return errors.New("Both instance IDs and tags are not specified")
+	}
+
+	log.Printf("[INFO] %s will run under max concurrency %s and max errors %s", documentName, maxConcurrency, maxErrors)
+
+	instances, err := cmdClient.GetInstances(instanceIDs, tagMap)
+	if err != nil {
+		return err
+	}
+
+	log.Println("[INFO] This command will be executed on the following instances")
+	for _, i := range instances {
+		log.Printf("[INFO]   %s (%s)", i.ComputerName, i.InstanceID)
+	}
+	for _, i := range instances {
+		if i.PingStatus != "Online" {
+			log.Printf("[WARN] %s (%s) is in %s status", i.ComputerName, i.InstanceID, i.PingStatus)
 		}
+	}
 
-		cmdClient, err := newCommandsClient(awsf)
-		if err != nil {
-			return err
-		}
-
-		tagMap := map[string][]string{}
-		for _, t := range tags {
-			parts := strings.SplitN(t, "=", 2)
-			tagMap[parts[0]] = []string{parts[1]}
-		}
-
-		if len(instanceIDs) == 0 && len(tagMap) == 0 {
-			return errors.New("Both instance IDs and tags are not specified")
-		}
-
-		log.Printf("[INFO] %s will run under max concurrency %s and max errors %s", documentName, maxConcurrency, maxErrors)
-
-		instances, err := cmdClient.GetInstances(instanceIDs, tagMap)
-		if err != nil {
-			return err
-		}
-
-		log.Println("[INFO] This command will be executed on the following instances")
-		for _, i := range instances {
-			log.Printf("[INFO]   %s (%s)", i.ComputerName, i.InstanceID)
-		}
-		for _, i := range instances {
-			if i.PingStatus != "Online" {
-				log.Printf("[WARN] %s (%s) is in %s status", i.ComputerName, i.InstanceID, i.PingStatus)
-			}
-		}
-
-		cont, err := askContinue("Are you sure to continue?")
-		if err != nil {
-			return err
-		}
-		if !cont {
-			fmt.Println("Canceled.")
-			return nil
-		}
-
-		startTime := time.Now()
-		command, err := cmdClient.Send(&commands.SendOptions{
-			DocumentName:      documentName,
-			InstanceIDs:       instanceIDs,
-			Tags:              tagMap,
-			MaxConcurrency:    maxConcurrency,
-			MaxErrors:         maxErrors,
-			OutputLogGroup:    outputLogGroup,
-			SignalS3Bucket:    signalS3Bucket,
-			SignalS3KeyPrefix: signalS3KeyPrefix,
-		})
-		if err != nil {
-			return err
-		}
-
-		log.Printf("[INFO] A command '%s' started", command.CommandID)
-		log.Printf("[INFO] To see the command status, run 'paramedic commands show --command-id=%s'", command.CommandID)
-		log.Print("[INFO] Output logs will be shown below")
-
-		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
-		reader := &outputlog.KinesisReader{
-			Kinesis:         awsf.Kinesis(),
-			StartTimestamp:  startTime,
-			LogGroup:        outputLogGroup,
-			LogStreamPrefix: logStreamPrefix,
-		}
-
-		printer := outputlog.NewPrinter(os.Stdout)
-
-		stopCh := make(chan struct{})
-		go func() {
-			command := <-cmdClient.WaitStatus(command.CommandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
-			log.Printf("[DEBUG] The command is now in %s status.", command.Status)
-			time.Sleep(10 * time.Second) // Wait for propagation of logs
-			stopCh <- struct{}{}
-		}()
-
-		exitCh := make(chan struct{})
-		go func() {
-			err := outputlog.Follow(reader, printer, stopCh)
-			if err != nil {
-				log.Printf("[WARN] %s", err)
-			}
-			exitCh <- struct{}{}
-		}()
-
-		// Wait until interrupted
-		sigCh := make(chan os.Signal)
-		signal.Notify(sigCh, syscall.SIGINT)
-
-		select {
-		case <-sigCh:
-			fmt.Print("Interrupted\n")
-			log.Printf("[INFO] To follow output logs, run 'paramedic commands log --command-id=%s --follow'", command.CommandID)
-			log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
-			return nil
-		case <-exitCh:
-		}
-
-		invocations, err := cmdClient.GetInvocations(command.CommandID)
-		if err != nil {
-			return err
-		}
-
-		fmt.Print("\n")
-		for _, i := range invocations {
-			fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
-		}
-
+	cont, err := askContinue("Are you sure to continue?")
+	if err != nil {
+		return err
+	}
+	if !cont {
+		fmt.Println("Canceled.")
 		return nil
-	},
+	}
+
+	startTime := time.Now()
+	command, err := cmdClient.Send(&commands.SendOptions{
+		DocumentName:      documentName,
+		InstanceIDs:       instanceIDs,
+		Tags:              tagMap,
+		MaxConcurrency:    maxConcurrency,
+		MaxErrors:         maxErrors,
+		OutputLogGroup:    outputLogGroup,
+		SignalS3Bucket:    signalS3Bucket,
+		SignalS3KeyPrefix: signalS3KeyPrefix,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[INFO] A command '%s' started", command.CommandID)
+	log.Printf("[INFO] To see the command status, run 'paramedic commands show --command-id=%s'", command.CommandID)
+	log.Print("[INFO] Output logs will be shown below")
+
+	logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
+	reader := &outputlog.KinesisReader{
+		Kinesis:         awsf.Kinesis(),
+		StartTimestamp:  startTime,
+		LogGroup:        outputLogGroup,
+		LogStreamPrefix: logStreamPrefix,
+	}
+
+	printer := outputlog.NewPrinter(os.Stdout)
+
+	stopCh := make(chan struct{})
+	go func() {
+		command := <-cmdClient.WaitStatus(command.CommandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
+		log.Printf("[DEBUG] The command is now in %s status.", command.Status)
+		time.Sleep(10 * time.Second) // Wait for propagation of logs
+		stopCh <- struct{}{}
+	}()
+
+	exitCh := make(chan struct{})
+	go func() {
+		err := outputlog.Follow(reader, printer, stopCh)
+		if err != nil {
+			log.Printf("[WARN] %s", err)
+		}
+		exitCh <- struct{}{}
+	}()
+
+	// Wait until interrupted
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, syscall.SIGINT)
+
+	select {
+	case <-sigCh:
+		fmt.Print("Interrupted\n")
+		log.Printf("[INFO] To follow output logs, run 'paramedic commands log --command-id=%s --follow'", command.CommandID)
+		log.Printf("[WARN] The command is NOT cancelled. To cancel, run 'paramedic commands cancel --command-id=%s'", command.CommandID)
+		return nil
+	case <-exitCh:
+	}
+
+	invocations, err := cmdClient.GetInvocations(command.CommandID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Print("\n")
+	for _, i := range invocations {
+		fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
+	}
+
+	return nil
 }
 
 func init() {

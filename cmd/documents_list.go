@@ -30,32 +30,34 @@ var documentsListCmd = &cobra.Command{
 	Short:         "List documents",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          documentsListHandler,
+}
 
-		awsFactory, err := awsclient.NewFactory()
-		if err != nil {
-			return err
-		}
+func documentsListHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
 
-		ssmClient := awsFactory.SSM()
+	awsFactory, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
 
-		err = ssmClient.ListDocumentsPages(&ssm.ListDocumentsInput{}, func(resp *ssm.ListDocumentsOutput, last bool) bool {
-			for _, i := range resp.DocumentIdentifiers {
-				if !documents.IsParamedicDocument(*i.Name) {
-					continue
-				}
-				name := documents.ConvertFromSSMName(*i.Name)
-				log.Printf("[INFO] - %s", name)
+	ssmClient := awsFactory.SSM()
+
+	err = ssmClient.ListDocumentsPages(&ssm.ListDocumentsInput{}, func(resp *ssm.ListDocumentsOutput, last bool) bool {
+		for _, i := range resp.DocumentIdentifiers {
+			if !documents.IsParamedicDocument(*i.Name) {
+				continue
 			}
-			return true
-		})
-		if err != nil {
-			return err
+			name := documents.ConvertFromSSMName(*i.Name)
+			log.Printf("[INFO] - %s", name)
 		}
+		return true
+	})
+	if err != nil {
+		return err
+	}
 
-		return nil
-	},
+	return nil
 }
 
 func init() {

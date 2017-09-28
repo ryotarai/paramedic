@@ -33,72 +33,74 @@ var commandsLogCmd = &cobra.Command{
 	Short:         "Show logs of a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          commandsLogHandler,
+}
 
-		for _, k := range []string{"command-id", "output-log-group"} {
-			if viper.GetString(k) == "" {
-				return fmt.Errorf("%s is required", k)
-			}
+func commandsLogHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	for _, k := range []string{"command-id", "output-log-group"} {
+		if viper.GetString(k) == "" {
+			return fmt.Errorf("%s is required", k)
 		}
-		outputLogGroup := viper.GetString("output-log-group")
-		commandID := viper.GetString("command-id")
-		follow := viper.GetBool("follow")
+	}
+	outputLogGroup := viper.GetString("output-log-group")
+	commandID := viper.GetString("command-id")
+	follow := viper.GetBool("follow")
 
-		awsf, err := awsclient.NewFactory()
+	awsf, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
+
+	cmdClient, err := newCommandsClient(awsf)
+	if err != nil {
+		return err
+	}
+
+	command, err := cmdClient.Get(commandID)
+	if err != nil {
+		return err
+	}
+
+	logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
+
+	var reader outputlog.Reader
+	if follow {
+		reader = &outputlog.KinesisReader{
+			Kinesis:         awsf.Kinesis(),
+			StartTimestamp:  time.Now(),
+			LogGroup:        outputLogGroup,
+			LogStreamPrefix: logStreamPrefix,
+		}
+	} else {
+		reader = &outputlog.CloudWatchLogsReader{
+			CloudWatchLogs:  awsf.CloudWatchLogs(),
+			LogGroup:        outputLogGroup,
+			LogStreamPrefix: logStreamPrefix,
+		}
+	}
+
+	printer := outputlog.NewPrinter(os.Stdout)
+
+	if follow {
+		stopCh := make(chan struct{})
+		go func() {
+			command := <-cmdClient.WaitStatus(commandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
+			log.Printf("[DEBUG] The command is now in %s status.", command.Status)
+			time.Sleep(10 * time.Second) // Wait for propagation of logs
+			stopCh <- struct{}{}
+		}()
+		outputlog.Follow(reader, printer, stopCh)
+	} else {
+		events, err := reader.Read()
 		if err != nil {
 			return err
 		}
+		printer.Print(events)
+	}
 
-		cmdClient, err := newCommandsClient(awsf)
-		if err != nil {
-			return err
-		}
-
-		command, err := cmdClient.Get(commandID)
-		if err != nil {
-			return err
-		}
-
-		logStreamPrefix := fmt.Sprintf("%s/", command.PcommandID)
-
-		var reader outputlog.Reader
-		if follow {
-			reader = &outputlog.KinesisReader{
-				Kinesis:         awsf.Kinesis(),
-				StartTimestamp:  time.Now(),
-				LogGroup:        outputLogGroup,
-				LogStreamPrefix: logStreamPrefix,
-			}
-		} else {
-			reader = &outputlog.CloudWatchLogsReader{
-				CloudWatchLogs:  awsf.CloudWatchLogs(),
-				LogGroup:        outputLogGroup,
-				LogStreamPrefix: logStreamPrefix,
-			}
-		}
-
-		printer := outputlog.NewPrinter(os.Stdout)
-
-		if follow {
-			stopCh := make(chan struct{})
-			go func() {
-				command := <-cmdClient.WaitStatus(commandID, []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"})
-				log.Printf("[DEBUG] The command is now in %s status.", command.Status)
-				time.Sleep(10 * time.Second) // Wait for propagation of logs
-				stopCh <- struct{}{}
-			}()
-			outputlog.Follow(reader, printer, stopCh)
-		} else {
-			events, err := reader.Read()
-			if err != nil {
-				return err
-			}
-			printer.Print(events)
-		}
-
-		return nil
-	},
+	return nil
 }
 
 func init() {

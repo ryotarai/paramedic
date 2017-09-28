@@ -29,46 +29,48 @@ var commandsCancelCmd = &cobra.Command{
 	Short:         "Cancel a command",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+	RunE:          commandsCancelHandler,
+}
 
-		for _, k := range []string{"command-id"} {
-			if viper.GetString(k) == "" {
-				return fmt.Errorf("%s is required", k)
-			}
+func commandsCancelHandler(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	for _, k := range []string{"command-id"} {
+		if viper.GetString(k) == "" {
+			return fmt.Errorf("%s is required", k)
 		}
-		commandID := viper.GetString("command-id")
-		signalNo := viper.GetInt("signal")
+	}
+	commandID := viper.GetString("command-id")
+	signalNo := viper.GetInt("signal")
 
-		awsf, err := awsclient.NewFactory()
-		if err != nil {
-			return err
-		}
+	awsf, err := awsclient.NewFactory()
+	if err != nil {
+		return err
+	}
 
-		cmdClient, err := newCommandsClient(awsf)
-		if err != nil {
-			return err
-		}
+	cmdClient, err := newCommandsClient(awsf)
+	if err != nil {
+		return err
+	}
 
-		command, err := cmdClient.Get(commandID)
-		if err != nil {
-			return err
-		}
+	command, err := cmdClient.Get(commandID)
+	if err != nil {
+		return err
+	}
 
-		err = cmdClient.Cancel(command, signalNo)
-		if err != nil {
-			return err
-		}
+	err = cmdClient.Cancel(command, signalNo)
+	if err != nil {
+		return err
+	}
 
-		log.Printf("[INFO] Canceling a command %s", commandID)
+	log.Printf("[INFO] Canceling a command %s", commandID)
 
-		canceled := []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"}
-		command = <-cmdClient.WaitStatus(command.CommandID, canceled)
+	canceled := []string{"Success", "Cancelled", "Failed", "TimedOut", "Cancelling"}
+	command = <-cmdClient.WaitStatus(command.CommandID, canceled)
 
-		log.Printf("[INFO] The command is now in %s state", command.Status)
+	log.Printf("[INFO] The command is now in %s state", command.Status)
 
-		return nil
-	},
+	return nil
 }
 
 func init() {
