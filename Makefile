@@ -14,7 +14,7 @@ buildx:
 	gzip -k _bin/v$(VERSION)/*
 
 test:
-	go test -v $(shell go list ./... | grep -v /vendor/)
+	go test -v ./...
 
 bench:
 	go test -bench .
