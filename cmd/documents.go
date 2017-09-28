@@ -20,7 +20,8 @@ import (
 
 // documentsCmd represents the documents command
 var documentsCmd = &cobra.Command{
-	Use: "documents",
+	Use:   "documents",
+	Short: "Manage documents",
 }
 
 func init() {
