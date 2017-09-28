@@ -39,11 +39,10 @@ var commandsLogCmd = &cobra.Command{
 func commandsLogHandler(cmd *cobra.Command, args []string) error {
 	viper.BindPFlags(cmd.Flags())
 
-	for _, k := range []string{"command-id", "output-log-group"} {
-		if viper.GetString(k) == "" {
-			return fmt.Errorf("%s is required", k)
-		}
+	if err := requireStringFlags([]string{"command-id", "output-log-group"}); err != nil {
+		return err
 	}
+
 	outputLogGroup := viper.GetString("output-log-group")
 	commandID := viper.GetString("command-id")
 	follow := viper.GetBool("follow")

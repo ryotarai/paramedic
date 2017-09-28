@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
@@ -35,11 +34,10 @@ var commandsCancelCmd = &cobra.Command{
 func commandsCancelHandler(cmd *cobra.Command, args []string) error {
 	viper.BindPFlags(cmd.Flags())
 
-	for _, k := range []string{"command-id"} {
-		if viper.GetString(k) == "" {
-			return fmt.Errorf("%s is required", k)
-		}
+	if err := requireStringFlags([]string{"command-id"}); err != nil {
+		return err
 	}
+
 	commandID := viper.GetString("command-id")
 	signalNo := viper.GetInt("signal")
 

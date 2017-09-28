@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ryotarai/paramedic/awsclient"
@@ -37,10 +36,8 @@ var uploadCmd = &cobra.Command{
 func documentsUploadHandler(cmd *cobra.Command, args []string) error {
 	viper.BindPFlags(cmd.Flags())
 
-	for _, k := range []string{"script-s3-bucket"} {
-		if viper.GetString(k) == "" {
-			return fmt.Errorf("%s is required", k)
-		}
+	if err := requireStringFlags([]string{"script-s3-bucket"}); err != nil {
+		return err
 	}
 
 	scriptS3Bucket := viper.GetString("script-s3-bucket")

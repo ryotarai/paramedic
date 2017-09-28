@@ -33,11 +33,10 @@ var commandsShowCmd = &cobra.Command{
 func commandsShowHandler(cmd *cobra.Command, args []string) error {
 	viper.BindPFlags(cmd.Flags())
 
-	for _, k := range []string{"command-id"} {
-		if viper.GetString(k) == "" {
-			return fmt.Errorf("%s is required", k)
-		}
+	if err := requireStringFlags([]string{"command-id", "signal-s3-bucket"}); err != nil {
+		return err
 	}
+
 	commandID := viper.GetString("command-id")
 	detail := viper.GetBool("detail")
 

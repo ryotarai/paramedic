@@ -45,10 +45,8 @@ var commandsRunCmd = &cobra.Command{
 func commandsRunHandler(cmd *cobra.Command, args []string) error {
 	viper.BindPFlags(cmd.Flags())
 
-	for _, k := range []string{"document-name", "signal-s3-bucket"} {
-		if viper.GetString(k) == "" {
-			return fmt.Errorf("%s is required", k)
-		}
+	if err := requireStringFlags([]string{"document-name", "signal-s3-bucket"}); err != nil {
+		return err
 	}
 
 	documentName := viper.GetString("document-name")
