@@ -16,9 +16,11 @@ package cmd
 
 import (
 	"log"
+	"os"
+	"path/filepath"
+	"regexp"
 
 	"github.com/ryotarai/paramedic/awsclient"
-	"github.com/ryotarai/paramedic/documents"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -42,6 +44,12 @@ func documentsUploadHandler(cmd *cobra.Command, args []string) error {
 
 	scriptS3Bucket := viper.GetString("script-s3-bucket")
 	scriptS3KeyPrefix := viper.GetString("script-s3-key-prefix")
+	filterStr := viper.GetString("filter")
+
+	filter, err := regexp.Compile(filterStr)
+	if err != nil {
+		return err
+	}
 
 	awsf, err := awsclient.NewFactory()
 	if err != nil {
@@ -53,18 +61,32 @@ func documentsUploadHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	files := []string{}
 	for _, arg := range args {
-		log.Printf("[INFO] Uploading %s", arg)
-		def, err := documents.LoadDefinition(arg)
-		if err != nil {
-			return err
-		}
+		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("[WARN] %s", err)
+			}
+			if !filter.MatchString(path) {
+				return nil
+			}
 
-		err = docClient.Create(def)
-		if err != nil {
-			log.Printf("[WARN] %s", err)
-		}
+			files = append(files, path)
+			return nil
+		})
 	}
+
+	// 	log.Printf("[INFO] Uploading %s", arg)
+	// 	def, err := documents.LoadDefinition(arg)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	err = docClient.Create(def)
+	// 	if err != nil {
+	// 		log.Printf("[WARN] %s", err)
+	// 	}
+	// }
 
 	return nil
 }
@@ -82,4 +104,5 @@ func init() {
 	// is called directly, e.g.:
 	uploadCmd.Flags().String("script-s3-bucket", "", "S3 bucket to store a script file")
 	uploadCmd.Flags().String("script-s3-key-prefix", "scripts/", "S3 key prefix to store a script file")
+	uploadCmd.Flags().String("filter", ".+\\.yaml\\z", "Filter document files")
 }
