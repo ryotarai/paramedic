@@ -174,6 +174,8 @@ func commandsRunHandler(cmd *cobra.Command, args []string) error {
 	for _, i := range invocations {
 		fmt.Printf("%s (%s) %s\n", i.InstanceName, i.InstanceID, i.Status)
 	}
+	fmt.Print("\n")
+	fmt.Printf("To see output logs, run 'paramedic commands log --command-id=%s'\n", command.CommandID)
 
 	return nil
 }
