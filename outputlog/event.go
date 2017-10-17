@@ -22,3 +22,14 @@ func SortEventsByTimestamp(events []*Event) {
 		return events[i].Timestamp.Before(events[j].Timestamp)
 	})
 }
+
+func SortEventsByInstance(events []*Event) {
+	sort.Slice(events, func(i, j int) bool {
+		a := events[i].InstanceID()
+		b := events[j].InstanceID()
+		if a != b {
+			return a < b
+		}
+		return events[i].Timestamp.Before(events[j].Timestamp)
+	})
+}

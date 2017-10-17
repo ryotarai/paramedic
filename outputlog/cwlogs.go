@@ -13,6 +13,7 @@ type CloudWatchLogsReader struct {
 	CloudWatchLogs  awsclient.CloudWatchLogs
 	LogGroup        string
 	LogStreamPrefix string
+	SortByTime      bool
 }
 
 func (r *CloudWatchLogsReader) Read() ([]*Event, error) {
@@ -30,7 +31,12 @@ func (r *CloudWatchLogsReader) Read() ([]*Event, error) {
 		}
 		events = append(events, ev...)
 	}
-	SortEventsByTimestamp(events)
+
+	if r.SortByTime {
+		SortEventsByTimestamp(events)
+	} else {
+		SortEventsByInstance(events)
+	}
 
 	return events, nil
 }

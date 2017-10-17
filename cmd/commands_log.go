@@ -45,6 +45,7 @@ func commandsLogHandler(cmd *cobra.Command, args []string) error {
 
 	outputLogGroup := viper.GetString("output-log-group")
 	commandID := viper.GetString("command-id")
+	sortBy := viper.GetString("sort")
 	follow := viper.GetBool("follow")
 
 	awsf, err := awsclient.NewFactory()
@@ -73,10 +74,15 @@ func commandsLogHandler(cmd *cobra.Command, args []string) error {
 			LogStreamPrefix: logStreamPrefix,
 		}
 	} else {
+		sortByTime := false
+		if sortBy == "time" {
+			sortByTime = true
+		}
 		reader = &outputlog.CloudWatchLogsReader{
 			CloudWatchLogs:  awsf.CloudWatchLogs(),
 			LogGroup:        outputLogGroup,
 			LogStreamPrefix: logStreamPrefix,
+			SortByTime:      sortByTime,
 		}
 	}
 
@@ -115,5 +121,6 @@ func init() {
 	// is called directly, e.g.:
 	commandsLogCmd.Flags().String("command-id", "", "Command ID")
 	commandsLogCmd.Flags().String("output-log-group", "", "Log group")
+	commandsLogCmd.Flags().String("sort", "instance", "Sort by 'instance' of 'time' (This option is effective only for non-follow mode)")
 	commandsLogCmd.Flags().BoolP("follow", "f", false, "Follow logs like `tail -f -n0` (Kinesis Streams will be used)")
 }
