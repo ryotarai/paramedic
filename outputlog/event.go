@@ -18,7 +18,7 @@ func (e *Event) InstanceID() string {
 }
 
 func SortEventsByTimestamp(events []*Event) {
-	sort.Slice(events, func(i, j int) bool {
+	sort.SliceStable(events, func(i, j int) bool {
 		return events[i].Timestamp.Before(events[j].Timestamp)
 	})
 }
