@@ -24,7 +24,7 @@ func SortEventsByTimestamp(events []*Event) {
 }
 
 func SortEventsByInstance(events []*Event) {
-	sort.Slice(events, func(i, j int) bool {
+	sort.SliceStable(events, func(i, j int) bool {
 		a := events[i].InstanceID()
 		b := events[j].InstanceID()
 		if a != b {
